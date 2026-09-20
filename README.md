@@ -6,18 +6,25 @@ Minecraft **26.2**（Fabric）客户端只读信息接口：把玩家状态用�
 独立成一个模组，单独占用 **127.0.0.1:3421**（mcctl 仍然用 3420，两个可以同时装）。
 
 ```
-GET /        使用说明
-GET /info    玩家信息（别名 /player、/info.txt）
+GET /            使用说明
+GET /info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状态效果
+                 （别名 /player、/info.txt）
+GET /inventory   背包物品：主背包/副手/盔甲
+                 （别名 /inv、/inventory.txt）
 ```
 
 ```bash
 curl http://127.0.0.1:3421/info
+curl http://127.0.0.1:3421/inventory
 ./aifetch info
+./aifetch inventory
 ```
 
 ## 输出格式
 
-`200 text/plain; charset=utf-8`，每行一条：
+`200 text/plain; charset=utf-8`，每行一条。
+
+`GET /info`：
 
 ```
 玩家：DSH
@@ -28,13 +35,12 @@ curl http://127.0.0.1:3421/info
 yaw：-266.7
 pitch：30.1
 选中：3
-背包：
-minecraft:crafting_table 1
-minecraft:stone 15
-副手：
-minecraft:torch 7
-盔甲：
-minecraft:diamond_helmet 1
+生命值：20.0
+饱食度：18
+饱和度：5.0
+效果：
+minecraft:haste 2 95
+minecraft:speed 1 无限
 ```
 
 | 字段 | 说明 |
@@ -46,12 +52,32 @@ minecraft:diamond_helmet 1
 | `方位` | `north` / `south` / `east` / `west` |
 | `yaw` `pitch` | 朝向角度，保留 1 位小数 |
 | `选中` | 快捷栏选中格，1-9 |
+| `生命值` | 当前血量，保留 1 位小数（上限 20） |
+| `饱食度` | 饥饿值，整数 0-20 |
+| `饱和度` | 饱和度，保留 1 位小数 |
+| `效果：` | **只有存在状态效果时才出现**，按效果 ID 排序 |
+| 效果行 | `<效果ID> <等级> <剩余秒数>`，等级从 1 起；永久效果剩余秒数为 `无限` |
+
+`GET /inventory`：
+
+```
+背包：
+minecraft:crafting_table 1
+minecraft:stone 15
+副手：
+minecraft:torch 7
+盔甲：
+minecraft:diamond_helmet 1
+```
+
+| 字段 | 说明 |
+| --- | --- |
 | `背包：` | **主背包 + 快捷栏**合并，按命名空间 ID 聚合（同一物品跨格相加），按 ID 排序 |
 | `副手：` | 只有副手有物品时才出现 |
 | `盔甲：` | 只有盔甲栏有物品时才出现，按 头/胸/腿/脚 顺序，每个有东西的栏位一行 |
 
 * 不做"是不是盔甲"的判断——盔甲栏里有什么就输出什么（戴南瓜就输出 `minecraft:carved_pumpkin 1`）。
-* 空栏不输出任何行；`副手：`/`盔甲：` 整段消失。
+* 空栏不输出任何行；`副手：`/`盔甲：`/`效果：` 整段消失。
 * 数据在客户端主线程（渲染线程）读取，拿到的是完整一致的快照。
 
 ## 构建 / 安装
@@ -59,7 +85,7 @@ minecraft:diamond_helmet 1
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.0.0.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.1.0.jar
 ```
 
 把 jar 放进 `.minecraft/mods/`，启动后日志里会有：
@@ -76,8 +102,8 @@ advanced-info-fetch listening on http://127.0.0.1:3421
 src/main/java/com/example/aif/
   AdvancedInfoFetchMod.java  Fabric 客户端入口, 启动 3421 端口服务
   InfoServer.java            HTTP 服务 (只读, 只接受 GET/HEAD)
-  InfoProvider.java          数据来源抽象
-  PlayerInfoProvider.java    读取玩家坐标/方位/背包 (Minecraft 相关代码都在这里)
+  InfoProvider.java          数据来源抽象 (info / inventory)
+  PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包 (Minecraft 相关代码都在这里)
   Help.java                  GET / 返回的使用说明
 tools/VerifyServer.java      脱离游戏验证 HTTP 层 (假数据源)
 aifetch                      命令行封装脚本
@@ -90,6 +116,7 @@ javac --release 25 -encoding UTF-8 -d /tmp/aif-verify \
   src/main/java/com/example/aif/{InfoProvider,InfoServer,Help}.java tools/VerifyServer.java
 java -cp /tmp/aif-verify VerifyServer
 curl http://127.0.0.1:3421/info
+curl http://127.0.0.1:3421/inventory
 ```
 
 ## 许可证

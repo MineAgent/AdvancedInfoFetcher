@@ -17,10 +17,12 @@ public final class Help {
 				监听地址: http://127.0.0.1:3421
 
 				  GET  /            返回本使用说明
-				  GET  /info        返回玩家坐标/方位/背包物品数量 (纯文本, 每行一条)
+				  GET  /info        返回玩家坐标/方位/生命值/饱食度/饱和度/状态效果 (纯文本, 每行一条)
 				                    (别名: /player, /info.txt)
+				  GET  /inventory   返回玩家背包/副手/盔甲物品数量 (纯文本, 每行一条)
+				                    (别名: /inv, /inventory.txt)
 
-				输出格式
+				/info 输出格式
 				  玩家：<用户名>
 				  维度：<命名空间ID>
 				  坐标：<x> <y> <z>               (保留 2 位小数)
@@ -29,6 +31,13 @@ public final class Help {
 				  yaw：<角度>
 				  pitch：<角度>
 				  选中：<1-9>                     (快捷栏选中格)
+				  生命值：<血量>                   (保留 1 位小数, 上限 20)
+				  饱食度：<0-20>
+				  饱和度：<饱和度>                 (保留 1 位小数)
+				  效果：                           (仅有效果时出现, 按效果 ID 排序)
+				  <效果ID> <等级> <剩余秒数>        (永久效果剩余秒数为"无限")
+
+				/inventory 输出格式
 				  背包：                           (主背包 + 快捷栏, 按物品 ID 聚合)
 				  <命名空间ID> <数量>
 				  副手：                           (仅副手有物品时出现)
@@ -39,7 +48,9 @@ public final class Help {
 				示例
 				  curl http://127.0.0.1:3421
 				  curl http://127.0.0.1:3421/info
+				  curl http://127.0.0.1:3421/inventory
 				  ./aifetch info
+				  ./aifetch inventory
 
 				返回
 				  200  纯文本 (Content-Type: text/plain; charset=utf-8)
@@ -49,10 +60,10 @@ public final class Help {
 
 				注意事项
 				  背包是"主背包 + 快捷栏"合并后按命名空间 ID 聚合的总数, 按 ID 排序
-				  副手/盔甲两段只有对应栏位有物品时才输出, 空栏不输出任何行
+				  副手/盔甲/效果三段只有对应内容非空时才输出, 空栏不输出任何行
 				  不对盔甲栏做"是不是盔甲"的判断, 栏位里有什么就输出什么
 				  数据在客户端主线程(渲染线程)读取, 保证是完整的一帧快照
-				  命令行用法: ./aifetch info
+				  命令行用法: ./aifetch info | ./aifetch inventory
 				""";
 	}
 }

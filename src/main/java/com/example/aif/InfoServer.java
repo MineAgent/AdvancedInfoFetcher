@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +21,8 @@ import java.util.logging.Logger;
  *
  * <ul>
  *   <li>{@code GET /} returns the manual.</li>
- *   <li>{@code GET /info} returns the player snapshot as plain text.</li>
+ *   <li>{@code GET /info} returns position/facing/vitals/effects as plain text.</li>
+ *   <li>{@code GET /inventory} returns the carried items as plain text.</li>
  * </ul>
  */
 public final class InfoServer {
@@ -74,6 +76,10 @@ public final class InfoServer {
 				handleInfo(exchange);
 				return;
 			}
+			if (isInventoryPath(exchange.getRequestURI().getPath())) {
+				handleInventory(exchange);
+				return;
+			}
 			respond(exchange, 200, Help.text());
 		} catch (Exception e) {
 			LOG.log(Level.WARNING, "request failed", e);
@@ -87,26 +93,44 @@ public final class InfoServer {
 		return "/info".equals(path) || "/info.txt".equals(path) || "/player".equals(path);
 	}
 
+	private static boolean isInventoryPath(String path) {
+		return "/inventory".equals(path) || "/inventory.txt".equals(path) || "/inv".equals(path);
+	}
+
 	private void handleInfo(HttpExchange exchange) throws IOException {
+		respondSnapshot(exchange, "player info", provider::info);
+	}
+
+	private void handleInventory(HttpExchange exchange) throws IOException {
+		respondSnapshot(exchange, "inventory", provider::inventory);
+	}
+
+	/**
+	 * Runs {@code snapshot} and writes it, mapping the usual failure modes onto status codes.
+	 *
+	 * @param what label used in the 500 body
+	 */
+	private void respondSnapshot(HttpExchange exchange, String what, Supplier<String> snapshot)
+			throws IOException {
 		if (!provider.isReady()) {
 			respond(exchange, 409, "game not ready: " + provider.unavailableReason() + "\n");
 			return;
 		}
 
-		String info;
+		String body;
 		try {
-			info = provider.info();
+			body = snapshot.get();
 		} catch (RuntimeException e) {
-			LOG.log(Level.WARNING, "player info failed", e);
-			respond(exchange, 500, "player info failed: " + e + "\n");
+			LOG.log(Level.WARNING, what + " failed", e);
+			respond(exchange, 500, what + " failed: " + e + "\n");
 			return;
 		}
 
-		if (info == null) {
+		if (body == null) {
 			respond(exchange, 409, "no world loaded (still on a menu?)\n");
 			return;
 		}
-		respond(exchange, 200, info);
+		respond(exchange, 200, body);
 	}
 
 	private static void respond(HttpExchange exchange, int status, String body) throws IOException {

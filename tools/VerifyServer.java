@@ -35,7 +35,17 @@ public final class VerifyServer {
 					+ "yaw：-135.2\n"
 					+ "pitch：12.4\n"
 					+ "选中：1\n"
-					+ "背包：\n"
+					+ "生命值：20.0\n"
+					+ "饱食度：18\n"
+					+ "饱和度：5.0\n"
+					+ "效果：\n"
+					+ "minecraft:haste 2 95\n"
+					+ "minecraft:speed 1 无限\n";
+		}
+
+		@Override
+		public String inventory() {
+			return "背包：\n"
 					+ "minecraft:oak_log 12\n"
 					+ "minecraft:stone 64\n"
 					+ "副手：\n"
