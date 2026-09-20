@@ -11,9 +11,11 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +28,7 @@ import java.util.logging.Logger;
 
 /**
  * Reads the local player's state. {@link #info()} reports position, facing, vitals and active
- * effects; {@link #inventory()} reports the carried items.
+ * effects; {@link #inventory()} reports the carried items plus the screen of an open furnace.
  *
  * <p>Everything is read on the client (render) thread so the snapshot is consistent, then handed
  * back to the requesting HTTP thread.</p>
@@ -132,7 +134,7 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return out.toString();
 	}
 
-	/** Runs on the client thread: main inventory, offhand and armor contents. */
+	/** Runs on the client thread: main inventory, offhand, armor and any open furnace. */
 	private static String inventorySnapshot() {
 		LocalPlayer player = player();
 		if (player == null) {
@@ -158,7 +160,49 @@ public final class PlayerInfoProvider implements InfoProvider {
 			out.append("盔甲：\n").append(armor);
 		}
 
+		AbstractFurnaceMenu furnace = furnaceMenu(player);
+		if (furnace != null) {
+			out.append(furnaceLines(furnace));
+		}
+
 		return out.toString();
+	}
+
+	/**
+	 * A furnace screen is the only way a client learns about a furnace block entity, so an open
+	 * menu is both necessary and sufficient. Furnace, blast furnace and smoker share the menu.
+	 *
+	 * @return the open furnace menu, or {@code null} when no furnace screen is open
+	 */
+	private static AbstractFurnaceMenu furnaceMenu(LocalPlayer player) {
+		return player.containerMenu instanceof AbstractFurnaceMenu menu ? menu : null;
+	}
+
+	/**
+	 * @return the {@code 熔炉} block: menu type, the three slots (an empty slot prints {@code 空})
+	 *         and the burn/cook progress, each as a {@code <label>：<value>} line
+	 */
+	private static String furnaceLines(AbstractFurnaceMenu menu) {
+		StringBuilder out = new StringBuilder(128);
+		out.append("熔炉：\n");
+		out.append("类型：").append(menuTypeId(menu)).append('\n');
+		out.append("原料：\n").append(slotLine(menu, AbstractFurnaceMenu.INGREDIENT_SLOT));
+		out.append("燃料：\n").append(slotLine(menu, AbstractFurnaceMenu.FUEL_SLOT));
+		out.append("产物：\n").append(slotLine(menu, AbstractFurnaceMenu.RESULT_SLOT));
+		out.append("燃烧：").append(ratio(menu.getLitProgress())).append('\n');
+		out.append("烧炼：").append(ratio(menu.getBurnProgress())).append('\n');
+		return out.toString();
+	}
+
+	/** @return one {@code "<item id> <count>"} line, or {@code 空} when the slot is empty */
+	private static String slotLine(AbstractFurnaceMenu menu, int slot) {
+		ItemStack stack = menu.getSlot(slot).getItem();
+		return stack == null || stack.isEmpty() ? "空\n" : itemId(stack) + " " + stack.getCount() + "\n";
+	}
+
+	private static String menuTypeId(AbstractFurnaceMenu menu) {
+		Identifier id = BuiltInRegistries.MENU.getKey(menu.getType());
+		return id == null ? "unknown" : id.toString();
 	}
 
 	private static LocalPlayer player() {
@@ -226,5 +270,10 @@ public final class PlayerInfoProvider implements InfoProvider {
 	private static String decimal(double value, int scale) {
 		double factor = Math.pow(10, scale);
 		return String.valueOf(Math.round(value * factor) / factor);
+	}
+
+	/** @return a 0..1 ratio with a fixed 2 decimals, e.g. {@code 0.00} or {@code 0.85} */
+	private static String ratio(double value) {
+		return String.format(Locale.ROOT, "%.2f", value);
 	}
 }

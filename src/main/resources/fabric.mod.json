@@ -3,7 +3,7 @@
 	"id": "advanced-info-fetch",
 	"version": "${version}",
 	"name": "MC Advanced Info Fetch",
-	"description": "Read-only HTTP endpoints on 127.0.0.1:3421 that report the player position, facing, vitals and status effects (/info) plus the carried inventory, offhand and armor (/inventory) as plain technical text. Split out of mcctl.",
+	"description": "Read-only HTTP endpoints on 127.0.0.1:3421 that report the player position, facing, vitals and status effects (/info) plus the carried inventory, offhand, armor and any open furnace (/inventory) as plain technical text. Split out of mcctl.",
 	"authors": [
 		"MineAgent"
 	],

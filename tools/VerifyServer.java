@@ -51,7 +51,17 @@ public final class VerifyServer {
 					+ "副手：\n"
 					+ "minecraft:torch 3\n"
 					+ "盔甲：\n"
-					+ "minecraft:diamond_helmet 1\n";
+					+ "minecraft:diamond_helmet 1\n"
+					+ "熔炉：\n"
+					+ "类型：minecraft:furnace\n"
+					+ "原料：\n"
+					+ "minecraft:raw_iron 8\n"
+					+ "燃料：\n"
+					+ "minecraft:coal 4\n"
+					+ "产物：\n"
+					+ "空\n"
+					+ "燃烧：0.85\n"
+					+ "烧炼：0.45\n";
 		}
 	}
 
