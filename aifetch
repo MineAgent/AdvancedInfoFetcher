@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# aifetch - query the running Minecraft client for player info.
+#
+#   ./aifetch              player info (GET /info)   [same as: ./aifetch info]
+#   ./aifetch info         player info (GET /info)
+#   ./aifetch help         full manual (GET /)
+#   ./aifetch raw          raw /info without the trailing newline handling
+#
+# Environment:
+#   AIFETCH_URL   default http://127.0.0.1:3421
+set -euo pipefail
+
+URL="${AIFETCH_URL:-http://127.0.0.1:3421}"
+
+case "${1:-info}" in
+	-h | --help | help)
+		exec curl -sS "$URL"
+		;;
+	info | player | "")
+		curl -sS "$URL/info"
+		;;
+	*)
+		echo "aifetch: unknown argument '$1' (use: info | help)" >&2
+		exit 2
+		;;
+esac

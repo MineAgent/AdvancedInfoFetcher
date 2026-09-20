@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 MineAgent
+
+package com.example.aif;
+
+/**
+ * The manual returned for {@code GET /}.
+ */
+public final class Help {
+	private Help() {
+	}
+
+	public static String text() {
+		return """
+				MC Advanced Info Fetch — Minecraft 客户端信息查询 (Fabric, Minecraft 26.2)
+				============================================================
+				监听地址: http://127.0.0.1:3421
+
+				  GET  /            返回本使用说明
+				  GET  /info        返回玩家坐标/方位/背包物品数量 (纯文本, 每行一条)
+				                    (别名: /player, /info.txt)
+
+				输出格式
+				  玩家：<用户名>
+				  维度：<命名空间ID>
+				  坐标：<x> <y> <z>               (保留 2 位小数)
+				  方块：<x> <y> <z>               (所在方块坐标)
+				  方位：<north|south|east|west>
+				  yaw：<角度>
+				  pitch：<角度>
+				  选中：<1-9>                     (快捷栏选中格)
+				  背包：                           (主背包 + 快捷栏, 按物品 ID 聚合)
+				  <命名空间ID> <数量>
+				  副手：                           (仅副手有物品时出现)
+				  <命名空间ID> <数量>
+				  盔甲：                           (仅盔甲栏有物品时出现, 按 头/胸/腿/脚 顺序)
+				  <命名空间ID> <数量>
+
+				示例
+				  curl http://127.0.0.1:3421
+				  curl http://127.0.0.1:3421/info
+				  ./aifetch info
+
+				返回
+				  200  纯文本 (Content-Type: text/plain; charset=utf-8)
+				  405  方法不允许 (只支持 GET/HEAD)
+				  409  游戏客户端还没启动 / 还没进入世界
+				  500  读取玩家信息失败
+
+				注意事项
+				  背包是"主背包 + 快捷栏"合并后按命名空间 ID 聚合的总数, 按 ID 排序
+				  副手/盔甲两段只有对应栏位有物品时才输出, 空栏不输出任何行
+				  不对盔甲栏做"是不是盔甲"的判断, 栏位里有什么就输出什么
+				  数据在客户端主线程(渲染线程)读取, 保证是完整的一帧快照
+				  命令行用法: ./aifetch info
+				""";
+	}
+}
