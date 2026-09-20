@@ -11,7 +11,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
+import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -28,7 +30,8 @@ import java.util.logging.Logger;
 
 /**
  * Reads the local player's state. {@link #info()} reports position, facing, vitals and active
- * effects; {@link #inventory()} reports the carried items plus the screen of an open furnace.
+ * effects; {@link #inventory()} reports the carried items plus the screen of an open furnace or
+ * chest.
  *
  * <p>Everything is read on the client (render) thread so the snapshot is consistent, then handed
  * back to the requesting HTTP thread.</p>
@@ -134,7 +137,7 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return out.toString();
 	}
 
-	/** Runs on the client thread: main inventory, offhand, armor and any open furnace. */
+	/** Runs on the client thread: main inventory, offhand, armor and any open container. */
 	private static String inventorySnapshot() {
 		LocalPlayer player = player();
 		if (player == null) {
@@ -160,22 +163,17 @@ public final class PlayerInfoProvider implements InfoProvider {
 			out.append("盔甲：\n").append(armor);
 		}
 
-		AbstractFurnaceMenu furnace = furnaceMenu(player);
-		if (furnace != null) {
+		// A block entity is not synchronised to the client, so an open screen is the only way to
+		// see inside it. Only one container can be open at a time.
+		AbstractContainerMenu menu = player.containerMenu;
+
+		if (menu instanceof AbstractFurnaceMenu furnace) {
 			out.append(furnaceLines(furnace));
+		} else if (menu instanceof ChestMenu chest) {
+			out.append(chestLines(chest));
 		}
 
 		return out.toString();
-	}
-
-	/**
-	 * A furnace screen is the only way a client learns about a furnace block entity, so an open
-	 * menu is both necessary and sufficient. Furnace, blast furnace and smoker share the menu.
-	 *
-	 * @return the open furnace menu, or {@code null} when no furnace screen is open
-	 */
-	private static AbstractFurnaceMenu furnaceMenu(LocalPlayer player) {
-		return player.containerMenu instanceof AbstractFurnaceMenu menu ? menu : null;
 	}
 
 	/**
@@ -194,13 +192,39 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return out.toString();
 	}
 
+	/**
+	 * One line per non-empty slot, lowest slot first; empty slots are skipped entirely, so an empty
+	 * chest only prints its type and capacity.
+	 *
+	 * @return the {@code 箱子} block: menu type, capacity and the occupied slots
+	 */
+	private static String chestLines(ChestMenu menu) {
+		int slots = menu.getRowCount() * 9;
+		StringBuilder out = new StringBuilder(256);
+		out.append("箱子：\n");
+		out.append("类型：").append(menuTypeId(menu)).append('\n');
+		out.append("容量：").append(slots).append('\n');
+
+		for (int i = 0; i < slots; i++) {
+			ItemStack stack = menu.getSlot(i).getItem();
+
+			if (stack == null || stack.isEmpty()) {
+				continue;
+			}
+
+			out.append(i + 1).append("：\n").append(itemId(stack)).append(' ').append(stack.getCount()).append('\n');
+		}
+
+		return out.toString();
+	}
+
 	/** @return one {@code "<item id> <count>"} line, or {@code 空} when the slot is empty */
 	private static String slotLine(AbstractFurnaceMenu menu, int slot) {
 		ItemStack stack = menu.getSlot(slot).getItem();
 		return stack == null || stack.isEmpty() ? "空\n" : itemId(stack) + " " + stack.getCount() + "\n";
 	}
 
-	private static String menuTypeId(AbstractFurnaceMenu menu) {
+	private static String menuTypeId(AbstractContainerMenu menu) {
 		Identifier id = BuiltInRegistries.MENU.getKey(menu.getType());
 		return id == null ? "unknown" : id.toString();
 	}

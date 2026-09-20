@@ -61,7 +61,14 @@ public final class VerifyServer {
 					+ "产物：\n"
 					+ "空\n"
 					+ "燃烧：0.85\n"
-					+ "烧炼：0.45\n";
+					+ "烧炼：0.45\n"
+					+ "箱子：\n"
+					+ "类型：minecraft:generic_9x6\n"
+					+ "容量：54\n"
+					+ "1：\n"
+					+ "minecraft:stone 64\n"
+					+ "40：\n"
+					+ "minecraft:diamond 3\n";
 		}
 	}
 
