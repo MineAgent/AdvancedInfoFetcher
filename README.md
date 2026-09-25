@@ -11,7 +11,7 @@ GET /info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状�
                  （别名 /player、/info.txt）
 GET /inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
                  （别名 /inv、/inventory.txt）
-GET /world       世界信息：维度/时间/天数/游戏刻/天气/是否固定时间
+GET /world       世界信息：维度/时间/天数/游戏刻/天气
                  （别名 /dimension、/world.txt）
 GET /msg         聊天信息：自上次请求 /msg 以来聊天栏出现的一切
                  （别名 /chat、/msg.txt）
@@ -215,24 +215,22 @@ minecraft:block.stone.place 1.00 0.90
 天数：12
 游戏刻：295000
 天气：clear
-固定时间：false
 ```
 
 | 字段 | 说明 |
 | --- | --- |
 | `维度` | 维度命名空间 ID，例如 `minecraft:overworld`（1.6.0 起从 `/info` 移到这里） |
-| `时间` | 主世界时钟的时刻，`0`-`23999`；`0`=清晨、`6000`=正午、`12000`=黄昏、`18000`=午夜 |
+| `时间` | 主世界时钟的时刻，`0`-`23999`；`0`=清晨、`6000`=正午、`12000`=黄昏、`18000`=午夜。**没有昼夜循环的维度（下界、末地）输出 `不可用`** |
 | `天数` | 主世界时钟经过的整天数 |
 | `游戏刻` | 世界创建以来的总 tick 数（`Level#getGameTime()`） |
 | `天气` | `clear` / `rain` / `thunder` |
-| `固定时间` | `true` = 该维度没有昼夜循环（下界、末地），此时 `时间`/`天数` 不代表昼夜 |
 
 * 26.2 把旧的 `dayTime` 换成了 world clock 体系；这里读的是**主世界时钟**
   （`Level#getOverworldClockTime()`），它才是驱动昼夜的那个。
 * `天气` 取客户端**当前渲染状态**（`isRaining` / `isThundering` 基于雨/雷等级阈值），
   所以 `/weather rain|thunder|clear` 之后有约 5 秒的过渡，不会立刻翻转。
 * 和 `/info`、`/inventory` 一样是**快照**（不是增量），每次请求都返回当前值。
-* 在下界/末地，`天气` 恒为 `clear`、`固定时间` 为 `true`。
+* 在下界/末地：`时间` 输出 `不可用`，`天气` 恒为 `clear`；`天数`/`游戏刻` 仍是主世界的计数。
 
 * 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin。
 
@@ -241,7 +239,7 @@ minecraft:block.stone.place 1.00 0.90
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.0.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.1.jar
 ```
 
 把 jar 放进 `.minecraft/mods/`，启动后日志里会有：

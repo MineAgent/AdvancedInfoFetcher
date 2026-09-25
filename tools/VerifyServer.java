@@ -71,8 +71,7 @@ public final class VerifyServer {
 					+ "时间：6000\n"
 					+ "天数：12\n"
 					+ "游戏刻：295000\n"
-					+ "天气：clear\n"
-					+ "固定时间：false\n";
+					+ "天气：clear\n";
 		}
 
 		@Override

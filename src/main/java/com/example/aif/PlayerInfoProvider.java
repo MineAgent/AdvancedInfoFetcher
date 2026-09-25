@@ -171,18 +171,22 @@ public final class PlayerInfoProvider implements InfoProvider {
 		// imported here for the log calls.
 		var level = player.level();
 		// 26.2 replaced the old per-level dayTime with world clocks; the overworld clock is the one
-		// that drives the day/night cycle, so it is what "time" means here. A dimension with fixed
-		// time (the nether, the end) has no cycle of its own, which 固定时间 reports.
+		// that drives the day/night cycle, so it is what "time" means here.
 		long dayTime = level.getOverworldClockTime();
 		String weather = level.isThundering() ? "thunder" : level.isRaining() ? "rain" : "clear";
 
 		StringBuilder out = new StringBuilder(128);
 		out.append("维度：").append(level.dimension().identifier()).append('\n');
-		out.append("时间：").append(dayTime % 24000L).append('\n');
+		// A dimension with fixed time (the nether, the end) has no day/night cycle, so the time of
+		// day is meaningless there; the day counter is still the overworld's and stays useful.
+		if (level.dimensionType().hasFixedTime()) {
+			out.append("时间：不可用\n");
+		} else {
+			out.append("时间：").append(dayTime % 24000L).append('\n');
+		}
 		out.append("天数：").append(dayTime / 24000L).append('\n');
 		out.append("游戏刻：").append(level.getGameTime()).append('\n');
 		out.append("天气：").append(weather).append('\n');
-		out.append("固定时间：").append(level.dimensionType().hasFixedTime()).append('\n');
 		return out.toString();
 	}
 
