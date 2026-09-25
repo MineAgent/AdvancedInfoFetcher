@@ -25,6 +25,8 @@ import java.util.logging.Logger;
  *   <li>{@code GET /inventory} returns the carried items as plain text.</li>
  *   <li>{@code GET /msg} returns the chat lines that arrived since the previous call.</li>
  *   <li>{@code GET /sound} returns the sounds played since the previous call.</li>
+ *   <li>{@code GET /keysnd} returns only the noteworthy sounds since the previous call.</li>
+ *   <li>{@code GET /world} returns dimension, time and weather.</li>
  * </ul>
  */
 public final class InfoServer {
@@ -90,6 +92,14 @@ public final class InfoServer {
 				handleSounds(exchange);
 				return;
 			}
+			if (isKeySoundPath(exchange.getRequestURI().getPath())) {
+				handleKeySounds(exchange);
+				return;
+			}
+			if (isWorldPath(exchange.getRequestURI().getPath())) {
+				handleWorld(exchange);
+				return;
+			}
 			respond(exchange, 200, Help.text());
 		} catch (Exception e) {
 			LOG.log(Level.WARNING, "request failed", e);
@@ -115,12 +125,24 @@ public final class InfoServer {
 		return "/sound".equals(path) || "/sound.txt".equals(path) || "/sounds".equals(path);
 	}
 
+	private static boolean isKeySoundPath(String path) {
+		return "/keysnd".equals(path) || "/keysnd.txt".equals(path) || "/keysounds".equals(path);
+	}
+
+	private static boolean isWorldPath(String path) {
+		return "/world".equals(path) || "/world.txt".equals(path) || "/dimension".equals(path);
+	}
+
 	private void handleInfo(HttpExchange exchange) throws IOException {
 		respondSnapshot(exchange, "player info", provider::info);
 	}
 
 	private void handleInventory(HttpExchange exchange) throws IOException {
 		respondSnapshot(exchange, "inventory", provider::inventory);
+	}
+
+	private void handleWorld(HttpExchange exchange) throws IOException {
+		respondSnapshot(exchange, "world", provider::world);
 	}
 
 	private void handleMessages(HttpExchange exchange) throws IOException {
@@ -131,10 +153,14 @@ public final class InfoServer {
 		handleDrain(exchange, "sound events", provider::sounds);
 	}
 
+	private void handleKeySounds(HttpExchange exchange) throws IOException {
+		handleDrain(exchange, "important sounds", provider::keySounds);
+	}
+
 	/**
-	 * Reads and drains one of the since-last-time backlogs ({@code /msg}, {@code /sound}). A
-	 * {@code HEAD} is rejected instead of honoured: it would consume the backlog (the drain happens
-	 * while building the body) and then throw the body away.
+	 * Reads and drains one of the since-last-time backlogs ({@code /msg}, {@code /sound},
+	 * {@code /keysnd}). A {@code HEAD} is rejected instead of honoured: it would consume the backlog
+	 * (the drain happens while building the body) and then throw the body away.
 	 */
 	private void handleDrain(HttpExchange exchange, String what, Supplier<String> snapshot)
 			throws IOException {

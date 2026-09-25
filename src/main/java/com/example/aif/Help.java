@@ -25,10 +25,13 @@ public final class Help {
 				                    (纯文本, 每行一条; 别名: /chat, /msg.txt)
 				  GET  /sound       返回自上次 GET /sound 以来客户端播放的所有声音
 				                    (纯文本, 每行一条; 别名: /sounds, /sound.txt)
+				  GET  /keysnd      同 /sound 但只返回"重要"声音 (过滤脚步/音乐/ambient/ui/天气)
+				                    (纯文本, 每行一条; 与 /sound 共用队列, 读取同样清空; 别名: /keysounds, /keysnd.txt)
+				  GET  /world       返回当前维度/时间/天数/游戏刻/天气/是否固定时间
+				                    (纯文本, 每行一条; 别名: /dimension, /world.txt)
 
 				/info 输出格式
 				  玩家：<用户名>
-				  维度：<命名空间ID>
 				  坐标：<x> <y> <z>               (保留 2 位小数)
 				  方块：<x> <y> <z>               (所在方块坐标)
 				  方位：<north|south|east|west>
@@ -40,6 +43,7 @@ public final class Help {
 				  饱和度：<饱和度>                 (保留 1 位小数)
 				  效果：                           (仅有效果时出现, 按效果 ID 排序)
 				  <效果ID> <等级> <剩余秒数>        (永久效果剩余秒数为"无限")
+				  (维度/时间/天气已移到 /world)
 
 				/inventory 输出格式
 				  背包：                           (主背包 + 快捷栏, 按物品 ID 聚合)
@@ -75,20 +79,40 @@ public final class Help {
 				  注意：声音过多，缓冲区已丢弃 <数量> 条早期声音   (仅当缓冲区溢出时出现在第一行)
 				  没有任何新声音时返回空内容 (200, 正文为空)
 
+				/keysnd 输出格式
+				  和 /sound 完全一样的行格式, 但只输出"重要"声音
+				  被过滤掉(不输出)的: 脚步(*.step)、音乐(music.* / music_disc.*)、
+				                      ambient.*、UI 音效(ui.*)、天气音效(weather.*)
+				  其余全部输出, 例如方块破坏/放置、怪物叫声、爆炸、开关门、拾取等
+				  与 /sound 共用同一个队列: 谁先读谁拿走, 读完整队清空
+				  没有任何新声音时返回空内容 (200, 正文为空)
+
+				/world 输出格式
+				  维度：<命名空间ID>
+				  时间：<0-23999>                  (主世界时钟的时刻; 0=清晨, 6000=正午, 12000=黄昏, 18000=午夜)
+				  天数：<整数>                     (主世界时钟已经过的天数)
+				  游戏刻：<总游戏刻>                (世界创建以来的 tick 数)
+				  天气：<clear|rain|thunder>
+				  固定时间：<true|false>            (true = 该维度没有昼夜循环, 如下界/末地)
+
 				示例
 				  curl http://127.0.0.1:3421
 				  curl http://127.0.0.1:3421/info
 				  curl http://127.0.0.1:3421/inventory
 				  curl http://127.0.0.1:3421/msg
 				  curl http://127.0.0.1:3421/sound
+				  curl http://127.0.0.1:3421/keysnd
+				  curl http://127.0.0.1:3421/world
 				  ./aifetch info
 				  ./aifetch inventory
 				  ./aifetch msg
 				  ./aifetch sound
+				  ./aifetch keysnd
+				  ./aifetch world
 
 				返回
 				  200  纯文本 (Content-Type: text/plain; charset=utf-8)
-				  405  方法不允许 (只支持 GET/HEAD; /msg 和 /sound 只支持 GET)
+				  405  方法不允许 (只支持 GET/HEAD; /msg、/sound、/keysnd 只支持 GET)
 				  409  游戏客户端还没启动 / 还没进入世界
 				  500  读取玩家信息失败
 
@@ -100,6 +124,9 @@ public final class Help {
 				  未打开任何容器时 /inventory 与之前完全一致
 				  客户端只有在容器界面打开时才知道容器内容, 所以必须先右键打开
 				  不对盔甲栏做"是不是盔甲"的判断, 栏位里有什么就输出什么
+				  维度不再出现在 /info 里, 用 /world 读
+				  /world 的时间/天数是主世界时钟; 固定时间=true 的维度没有昼夜循环
+				  天气是客户端当前渲染状态(雨/雷等级阈值), /weather 后约 5 秒过渡完才翻转
 				  数据在客户端主线程(渲染线程)读取, 保证是完整的一帧快照
 				  /msg 返回的是"上一次 GET /msg 之后"新出现的消息, 读取即清空
 				  /msg 包含聊天栏里的一切: 聊天、指令输出、Baritone 等模组输出、报错
@@ -110,8 +137,9 @@ public final class Help {
 				  /sound 记录声音引擎真正开始播放的音效(含静音启动), 不记未播放的
 				  <音量> 是声音实例请求的音量, 不随距离衰减, 也不含音量设置的影响
 				  环境音/脚步等会频繁出现, 轮询间隔不要拉太长, 否则一次会读到很多行
+				  /keysnd 与 /sound 共用队列: 先读的那个拿到全部/重要声音, 另一个就读不到了
 				  声音缓存在内存里, 上限 16384 条, 溢出时丢弃最早的并在下次输出提示
-				  命令行用法: ./aifetch info | ./aifetch inventory | ./aifetch msg | ./aifetch sound
+				  命令行用法: ./aifetch info | ./aifetch inventory | ./aifetch msg | ./aifetch sound | ./aifetch keysnd | ./aifetch world
 				""";
 	}
 }

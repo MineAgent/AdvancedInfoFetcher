@@ -11,21 +11,29 @@ GET /info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状�
                  （别名 /player、/info.txt）
 GET /inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
                  （别名 /inv、/inventory.txt）
+GET /world       世界信息：维度/时间/天数/游戏刻/天气/是否固定时间
+                 （别名 /dimension、/world.txt）
 GET /msg         聊天信息：自上次请求 /msg 以来聊天栏出现的一切
                  （别名 /chat、/msg.txt）
 GET /sound       声音信息：自上次请求 /sound 以来客户端播放的所有声音
                  （别名 /sounds、/sound.txt）
+GET /keysnd      重要声音：同 /sound，但过滤掉脚步/音乐/ambient/ui/天气
+                 （与 /sound 共用队列，读取同样清空；别名 /keysounds、/keysnd.txt）
 ```
 
 ```bash
 curl http://127.0.0.1:3421/info
 curl http://127.0.0.1:3421/inventory
+curl http://127.0.0.1:3421/world
 curl http://127.0.0.1:3421/msg
 curl http://127.0.0.1:3421/sound
+curl http://127.0.0.1:3421/keysnd
 ./aifetch info
 ./aifetch inventory
+./aifetch world
 ./aifetch msg
 ./aifetch sound
+./aifetch keysnd
 ```
 
 ## 输出格式
@@ -36,7 +44,6 @@ curl http://127.0.0.1:3421/sound
 
 ```
 玩家：DSH
-维度：minecraft:overworld
 坐标：-222.94 106.0 103.1
 方块：-223 106 103
 方位：west
@@ -54,7 +61,6 @@ minecraft:speed 1 无限
 | 字段 | 说明 |
 | --- | --- |
 | `玩家` | 用户名 |
-| `维度` | 维度命名空间 ID，例如 `minecraft:overworld` |
 | `坐标` | 精确坐标，保留 2 位小数 |
 | `方块` | 所在方块坐标（整数） |
 | `方位` | `north` / `south` / `east` / `west` |
@@ -65,6 +71,8 @@ minecraft:speed 1 无限
 | `饱和度` | 饱和度，保留 1 位小数 |
 | `效果：` | **只有存在状态效果时才出现**，按效果 ID 排序 |
 | 效果行 | `<效果ID> <等级> <剩余秒数>`，等级从 1 起；永久效果剩余秒数为 `无限` |
+
+> 维度原本在 `/info` 里，1.6.0 起移到 `/world`（和时间、天气放在一起）。
 
 `GET /inventory`（只有打开了容器界面时才追加对应段落，否则这两段完全不出现）：
 
@@ -180,6 +188,52 @@ minecraft:block.stone.place 1.00 0.90
 * `HEAD /sound` 返回 `405`，理由和 `/msg` 一样。
 * 抓取点挂在 `SoundEngine#play` 上（Mixin），这是 `SoundManager#play`、延迟播放和
   `tickInGameSound` 共同的汇聚点，所以每个真正播放的声音**只记一次**。
+
+`GET /keysnd`：
+
+和 `/sound` 完全一样的行格式，但只输出**重要**声音，把这几类过滤掉：
+
+| 过滤掉的类别 | 规则 |
+| --- | --- |
+| 脚步 | 路径以 `.step` 结尾（`minecraft:block.stone.step`、`minecraft:entity.zombie.step` 等） |
+| 音乐 | `music.*`（含 `music.overworld.*`、`music.nether.*`）、`music_disc.*` |
+| 环境音 | `ambient.*` |
+| UI 音效 | `ui.*` |
+| 天气音效 | `weather.*` |
+
+其余全部保留：破坏/放置方块、挖掘命中、怪物叫声、爆炸、开关门、拾取、受伤等。
+
+* **和 `/sound` 共用同一个队列**：先读的那个把队列清空，另一个就读不到了。
+  想要"全部"就只读 `/sound`，想要"重点"就只读 `/keysnd`，不要两个混着读。
+* 缓存上限、溢出提示、`HEAD` 返回 `405` 都和 `/sound` 一致。
+
+`GET /world`：
+
+```
+维度：minecraft:overworld
+时间：6000
+天数：12
+游戏刻：295000
+天气：clear
+固定时间：false
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `维度` | 维度命名空间 ID，例如 `minecraft:overworld`（1.6.0 起从 `/info` 移到这里） |
+| `时间` | 主世界时钟的时刻，`0`-`23999`；`0`=清晨、`6000`=正午、`12000`=黄昏、`18000`=午夜 |
+| `天数` | 主世界时钟经过的整天数 |
+| `游戏刻` | 世界创建以来的总 tick 数（`Level#getGameTime()`） |
+| `天气` | `clear` / `rain` / `thunder` |
+| `固定时间` | `true` = 该维度没有昼夜循环（下界、末地），此时 `时间`/`天数` 不代表昼夜 |
+
+* 26.2 把旧的 `dayTime` 换成了 world clock 体系；这里读的是**主世界时钟**
+  （`Level#getOverworldClockTime()`），它才是驱动昼夜的那个。
+* `天气` 取客户端**当前渲染状态**（`isRaining` / `isThundering` 基于雨/雷等级阈值），
+  所以 `/weather rain|thunder|clear` 之后有约 5 秒的过渡，不会立刻翻转。
+* 和 `/info`、`/inventory` 一样是**快照**（不是增量），每次请求都返回当前值。
+* 在下界/末地，`天气` 恒为 `clear`、`固定时间` 为 `true`。
+
 * 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin。
 
 ## 构建 / 安装
@@ -187,7 +241,7 @@ minecraft:block.stone.place 1.00 0.90
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.5.0.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.0.jar
 ```
 
 把 jar 放进 `.minecraft/mods/`，启动后日志里会有：
@@ -205,11 +259,11 @@ Mixin 由 Fabric Loader 自带（`advanced-info-fetch.mixins.json`）。
 src/main/java/com/example/aif/
   AdvancedInfoFetchMod.java  Fabric 客户端入口, 启动 3421 端口服务
   InfoServer.java            HTTP 服务 (只读, 只接受 GET/HEAD)
-  InfoProvider.java          数据来源抽象 (info / inventory / messages / sounds)
-  PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子 (Minecraft 相关代码都在这里)
-  LineBuffer.java            有界线程安全行缓冲: push/drain, 溢出提示 (无 Minecraft 依赖)
+  InfoProvider.java          数据来源抽象 (info / inventory / messages / sounds / keySounds / world)
+  PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子/世界状态 (Minecraft 相关代码都在这里)
+  LineBuffer.java            有界线程安全行缓冲: push / 整体 drain / 过滤 drain, 溢出提示 (无 Minecraft 依赖)
   ChatLog.java               聊天记录缓冲: 抓取方 push, GET /msg drain
-  SoundLog.java              声音记录缓冲: 每行 "声音ID 音量 音高", GET /sound drain
+  SoundLog.java              声音记录缓冲: 每行 "声音ID 音量 音高", GET /sound 全给, GET /keysnd 过滤
   Help.java                  GET / 返回的使用说明
 src/main/java/com/example/aif/mixin/
   ChatComponentMixin.java    注入 ChatComponent#addMessage, 把每条聊天栏消息交给 ChatLog
@@ -228,8 +282,10 @@ javac --release 25 -encoding UTF-8 -d /tmp/aif-verify \
 java -cp /tmp/aif-verify VerifyServer
 curl http://127.0.0.1:3421/info
 curl http://127.0.0.1:3421/inventory
+curl http://127.0.0.1:3421/world
 curl http://127.0.0.1:3421/msg
 curl http://127.0.0.1:3421/sound
+curl http://127.0.0.1:3421/keysnd
 ```
 
 ## 许可证

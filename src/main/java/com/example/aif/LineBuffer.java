@@ -5,6 +5,7 @@ package com.example.aif;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Predicate;
 
 /**
  * A bounded, thread-safe queue of text lines with drain-on-read semantics.
@@ -49,6 +50,18 @@ public final class LineBuffer {
 	 *         empty string when nothing new arrived
 	 */
 	public synchronized String drain() {
+		return drain(line -> true);
+	}
+
+	/**
+	 * Drains the whole buffer but only returns the lines {@code keep} accepts. The buffer is cleared
+	 * either way, which is what lets two endpoints ({@code /sound} and {@code /keysnd}) share one
+	 * queue and both consume it.
+	 *
+	 * @param keep predicate deciding which lines are returned
+	 * @return the accepted lines, one per line, in arrival order
+	 */
+	public synchronized String drain(Predicate<String> keep) {
 		StringBuilder out = new StringBuilder(256);
 
 		if (dropped > 0) {
@@ -58,7 +71,10 @@ public final class LineBuffer {
 		}
 
 		while (!lines.isEmpty()) {
-			out.append(lines.removeFirst()).append('\n');
+			String line = lines.removeFirst();
+			if (keep.test(line)) {
+				out.append(line).append('\n');
+			}
 		}
 
 		return out.toString();

@@ -45,6 +45,42 @@ public final class SoundLog {
 		return buffer.drain();
 	}
 
+	/**
+	 * Returns only the noteworthy sounds played since the previous call, but clears the buffer just
+	 * like {@link #drain()} does - {@code /sound} and {@code /keysnd} share one queue.
+	 *
+	 * <p>Noteworthy means everything that is not a footstep ({@code *.step}), music
+	 * ({@code music.*}, {@code music_disc.*}), {@code ambient.*}, a UI sound ({@code ui.*}) or a
+	 * weather sound ({@code weather.*}).</p>
+	 *
+	 * @return the noteworthy sounds, one per line, in playback order
+	 */
+	public String drainImportant() {
+		return buffer.drain(SoundLog::isImportant);
+	}
+
+	/**
+	 * @param line a formatted {@code "<id> <volume> <pitch>"} entry
+	 * @return true when the entry is not one of the filtered out categories
+	 */
+	private static boolean isImportant(String line) {
+		String path = pathOf(line);
+		return !path.endsWith(".step")
+				&& !path.startsWith("music.")
+				&& !path.startsWith("music_disc.")
+				&& !path.startsWith("ambient.")
+				&& !path.startsWith("ui.")
+				&& !path.startsWith("weather.");
+	}
+
+	/** @return the path part of the entry's sound id, e.g. {@code block.stone.break} */
+	private static String pathOf(String line) {
+		int space = line.indexOf(' ');
+		String id = space < 0 ? line : line.substring(0, space);
+		int colon = id.indexOf(':');
+		return colon < 0 ? id : id.substring(colon + 1);
+	}
+
 	/** @return a fixed 2 decimal rendering, e.g. {@code 1.00} or {@code 0.80} */
 	private static String decimal(float value) {
 		return String.format(Locale.ROOT, "%.2f", value);

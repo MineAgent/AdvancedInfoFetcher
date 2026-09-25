@@ -6,6 +6,8 @@
 #   ./aifetch inventory    inventory / offhand / armor (GET /inventory)
 #   ./aifetch msg          chat lines since the previous msg call (GET /msg)
 #   ./aifetch sound        sounds played since the previous sound call (GET /sound)
+#   ./aifetch keysnd       only the noteworthy sounds since the previous call (GET /keysnd)
+#   ./aifetch world        dimension / time / weather (GET /world)
 #   ./aifetch help         full manual (GET /)
 #
 # Environment:
@@ -30,8 +32,14 @@ case "${1:-info}" in
 	sound | sounds | audio)
 		curl -sS "$URL/sound"
 		;;
+	keysnd | keysounds | key)
+		curl -sS "$URL/keysnd"
+		;;
+	world | dimension | time)
+		curl -sS "$URL/world"
+		;;
 	*)
-		echo "aifetch: unknown argument '$1' (use: info | inventory | msg | sound | help)" >&2
+		echo "aifetch: unknown argument '$1' (use: info | inventory | msg | sound | keysnd | world | help)" >&2
 		exit 2
 		;;
 esac

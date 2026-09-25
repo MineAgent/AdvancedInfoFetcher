@@ -76,6 +76,17 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return SoundLog.INSTANCE.drain();
 	}
 
+	@Override
+	public String keySounds() {
+		// Shares SoundLog's queue with sounds(): draining here consumes the backlog for both.
+		return SoundLog.INSTANCE.drainImportant();
+	}
+
+	@Override
+	public String world() {
+		return onClientThread(PlayerInfoProvider::worldSnapshot);
+	}
+
 	/**
 	 * Runs {@code snapshot} on the client thread and waits for the result.
 	 *
@@ -128,7 +139,6 @@ public final class PlayerInfoProvider implements InfoProvider {
 
 		StringBuilder out = new StringBuilder(256);
 		out.append("玩家：").append(player.getScoreboardName()).append('\n');
-		out.append("维度：").append(player.level().dimension().identifier()).append('\n');
 		out.append("坐标：").append(decimal(player.getX(), 2)).append(' ')
 				.append(decimal(player.getY(), 2)).append(' ')
 				.append(decimal(player.getZ(), 2)).append('\n');
@@ -147,6 +157,32 @@ public final class PlayerInfoProvider implements InfoProvider {
 			out.append("效果：\n").append(effects);
 		}
 
+		return out.toString();
+	}
+
+	/** Runs on the client thread: dimension, time, day and weather. */
+	private static String worldSnapshot() {
+		LocalPlayer player = player();
+		if (player == null) {
+			return null;
+		}
+
+		// `var` keeps the Minecraft Level out of the imports: java.util.logging.Level is already
+		// imported here for the log calls.
+		var level = player.level();
+		// 26.2 replaced the old per-level dayTime with world clocks; the overworld clock is the one
+		// that drives the day/night cycle, so it is what "time" means here. A dimension with fixed
+		// time (the nether, the end) has no cycle of its own, which 固定时间 reports.
+		long dayTime = level.getOverworldClockTime();
+		String weather = level.isThundering() ? "thunder" : level.isRaining() ? "rain" : "clear";
+
+		StringBuilder out = new StringBuilder(128);
+		out.append("维度：").append(level.dimension().identifier()).append('\n');
+		out.append("时间：").append(dayTime % 24000L).append('\n');
+		out.append("天数：").append(dayTime / 24000L).append('\n');
+		out.append("游戏刻：").append(level.getGameTime()).append('\n');
+		out.append("天气：").append(weather).append('\n');
+		out.append("固定时间：").append(level.dimensionType().hasFixedTime()).append('\n');
 		return out.toString();
 	}
 

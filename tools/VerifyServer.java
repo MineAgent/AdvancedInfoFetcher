@@ -52,13 +52,32 @@ public final class VerifyServer {
 			soundsDrained = true;
 			return "minecraft:block.stone.break 1.00 0.80\n"
 					+ "minecraft:entity.player.step 0.30 1.10\n"
-					+ "minecraft:block.stone.break 1.00 1.05\n";
+					+ "minecraft:music.overworld.jungle 1.00 1.00\n";
+		}
+
+		@Override
+		public String keySounds() {
+			// Shares the queue with sounds(): the same flag makes either call consume the backlog.
+			if (soundsDrained) {
+				return "";
+			}
+			soundsDrained = true;
+			return "minecraft:block.stone.break 1.00 0.80\n";
+		}
+
+		@Override
+		public String world() {
+			return "维度：minecraft:overworld\n"
+					+ "时间：6000\n"
+					+ "天数：12\n"
+					+ "游戏刻：295000\n"
+					+ "天气：clear\n"
+					+ "固定时间：false\n";
 		}
 
 		@Override
 		public String info() {
 			return "玩家：FakePlayer\n"
-					+ "维度：minecraft:overworld\n"
 					+ "坐标：-219.53 105.0 112.31\n"
 					+ "方块：-220 105 112\n"
 					+ "方位：north\n"
