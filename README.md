@@ -234,12 +234,27 @@ minecraft:block.stone.place 1.00 0.90
 
 * 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin。
 
+### 退出时不再写崩溃报告
+
+关游戏时渲染线程返回后，`Main` 会启动一个 post-main 看门狗：15 秒内 JVM 还没结束，它就写一份
+`Client shutdown from post-main` 崩溃报告，然后 `System.exit(-8)`。而 JVM 只有**所有非 daemon 线程**都结束后
+才会自己退出——`com.sun.net.httpserver` 每个服务都带一个非 daemon 的 `HTTP-Dispatcher` 线程（本模组一个，
+装了 mcctl 之类的模组还会再有一个），Baritone 也留着非 daemon 的 worker pool。
+JVM 关闭钩子救不了这个场景：JVM 根本没开始关闭，钩子不会执行。
+
+`ClientExitWatcher` 在渲染线程（`Minecraft#getRunningThread()`）上 `join()`，线程结束后先停掉本模组的 HTTP 服务
+（`HttpServer#stop(0)`），再显式 `System.exit(0)`。关闭钩子照常执行（Minecraft 自己的那个也在内），
+所以看门狗永远不会触发；这时世界早已保存、窗口早已关闭（`exitWorldAndClose()` 在 `main()` 返回前就跑完了），
+强制退出不会丢存档。既不依赖 Fabric API，也不用自己实现 HTTP 循环。
+
+> 只装本模组、不装 mcctl 时同样有效（验证时就是只留 aif 一个），所以两个模组各自独立解决这个问题。
+
 ## 构建 / 安装
 
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.1.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.2.jar
 ```
 
 把 jar 放进 `.minecraft/mods/`，启动后日志里会有：
@@ -256,6 +271,7 @@ Mixin 由 Fabric Loader 自带（`advanced-info-fetch.mixins.json`）。
 ```
 src/main/java/com/example/aif/
   AdvancedInfoFetchMod.java  Fabric 客户端入口, 启动 3421 端口服务
+  ClientExitWatcher.java     守候渲染线程, 客户端退出后停掉服务并结束 JVM (消除 post-main 崩溃报告)
   InfoServer.java            HTTP 服务 (只读, 只接受 GET/HEAD)
   InfoProvider.java          数据来源抽象 (info / inventory / messages / sounds / keySounds / world)
   PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子/世界状态 (Minecraft 相关代码都在这里)
