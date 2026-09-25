@@ -23,6 +23,8 @@ public final class Help {
 				                    (纯文本, 每行一条; 别名: /inv, /inventory.txt)
 				  GET  /msg         返回自上次 GET /msg 以来聊天栏出现的所有信息
 				                    (纯文本, 每行一条; 别名: /chat, /msg.txt)
+				  GET  /sound       返回自上次 GET /sound 以来客户端播放的所有声音
+				                    (纯文本, 每行一条; 别名: /sounds, /sound.txt)
 
 				/info 输出格式
 				  玩家：<用户名>
@@ -67,18 +69,26 @@ public final class Help {
 				  注意：消息过多，缓冲区已丢弃 <数量> 条早期消息   (仅当缓冲区溢出时出现在第一行)
 				  没有任何新消息时返回空内容 (200, 正文为空)
 
+				/sound 输出格式
+				  <声音ID> <音量> <音高>            (每播放一次输出一行, 按播放顺序)
+				                                    (音量/音高保留 2 位小数, 例: minecraft:block.stone.break 1.00 0.80)
+				  注意：声音过多，缓冲区已丢弃 <数量> 条早期声音   (仅当缓冲区溢出时出现在第一行)
+				  没有任何新声音时返回空内容 (200, 正文为空)
+
 				示例
 				  curl http://127.0.0.1:3421
 				  curl http://127.0.0.1:3421/info
 				  curl http://127.0.0.1:3421/inventory
 				  curl http://127.0.0.1:3421/msg
+				  curl http://127.0.0.1:3421/sound
 				  ./aifetch info
 				  ./aifetch inventory
 				  ./aifetch msg
+				  ./aifetch sound
 
 				返回
 				  200  纯文本 (Content-Type: text/plain; charset=utf-8)
-				  405  方法不允许 (只支持 GET/HEAD; /msg 只支持 GET)
+				  405  方法不允许 (只支持 GET/HEAD; /msg 和 /sound 只支持 GET)
 				  409  游戏客户端还没启动 / 还没进入世界
 				  500  读取玩家信息失败
 
@@ -93,10 +103,15 @@ public final class Help {
 				  数据在客户端主线程(渲染线程)读取, 保证是完整的一帧快照
 				  /msg 返回的是"上一次 GET /msg 之后"新出现的消息, 读取即清空
 				  /msg 包含聊天栏里的一切: 聊天、指令输出、Baritone 等模组输出、报错
-				  只统计聊天栏; 物品栏上方的动作栏(overlay)提示不在其中
+				  只统计聊天栏; 隐藏式字幕(辅助功能里的声音字幕)和动作栏(overlay)提示不在其中
 				  每条消息严格占一行, 消息内自带的换行会转义成 \n
 				  消息缓存在内存里, 上限 16384 条, 溢出时丢弃最早的并在下次输出提示
-				  命令行用法: ./aifetch info | ./aifetch inventory | ./aifetch msg
+				  /sound 返回的是"上一次 GET /sound 之后"新播放的声音, 读取即清空
+				  /sound 记录声音引擎真正开始播放的音效(含静音启动), 不记未播放的
+				  <音量> 是声音实例请求的音量, 不随距离衰减, 也不含音量设置的影响
+				  环境音/脚步等会频繁出现, 轮询间隔不要拉太长, 否则一次会读到很多行
+				  声音缓存在内存里, 上限 16384 条, 溢出时丢弃最早的并在下次输出提示
+				  命令行用法: ./aifetch info | ./aifetch inventory | ./aifetch msg | ./aifetch sound
 				""";
 	}
 }

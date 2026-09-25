@@ -4,7 +4,8 @@
 	"package": "com.example.aif.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"client": [
-		"ChatComponentMixin"
+		"ChatComponentMixin",
+		"SoundEngineMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

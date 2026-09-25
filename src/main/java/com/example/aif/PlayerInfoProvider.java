@@ -70,6 +70,12 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return ChatLog.INSTANCE.drain();
 	}
 
+	@Override
+	public String sounds() {
+		// Same reasoning as messages(): the sound engine appends, the HTTP thread drains.
+		return SoundLog.INSTANCE.drain();
+	}
+
 	/**
 	 * Runs {@code snapshot} on the client thread and waits for the result.
 	 *

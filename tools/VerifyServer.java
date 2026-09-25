@@ -18,6 +18,9 @@ public final class VerifyServer {
 		/** First {@code /msg} returns a transcript, every later one is empty (drain semantics). */
 		private boolean messagesDrained;
 
+		/** First {@code /sound} returns a transcript, every later one is empty (drain semantics). */
+		private boolean soundsDrained;
+
 		@Override
 		public boolean isReady() {
 			return true;
@@ -39,6 +42,17 @@ public final class VerifyServer {
 					+ "[Not Secure] <DSH> hello\n"
 					+ "未知的指令, 请检查拼写\n"
 					+ "已将游戏模式设置为 创造模式\n";
+		}
+
+		@Override
+		public String sounds() {
+			if (soundsDrained) {
+				return "";
+			}
+			soundsDrained = true;
+			return "minecraft:block.stone.break 1.00 0.80\n"
+					+ "minecraft:entity.player.step 0.30 1.10\n"
+					+ "minecraft:block.stone.break 1.00 1.05\n";
 		}
 
 		@Override

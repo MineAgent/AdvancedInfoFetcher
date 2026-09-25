@@ -24,6 +24,7 @@ import java.util.logging.Logger;
  *   <li>{@code GET /info} returns position/facing/vitals/effects as plain text.</li>
  *   <li>{@code GET /inventory} returns the carried items as plain text.</li>
  *   <li>{@code GET /msg} returns the chat lines that arrived since the previous call.</li>
+ *   <li>{@code GET /sound} returns the sounds played since the previous call.</li>
  * </ul>
  */
 public final class InfoServer {
@@ -85,6 +86,10 @@ public final class InfoServer {
 				handleMessages(exchange);
 				return;
 			}
+			if (isSoundPath(exchange.getRequestURI().getPath())) {
+				handleSounds(exchange);
+				return;
+			}
 			respond(exchange, 200, Help.text());
 		} catch (Exception e) {
 			LOG.log(Level.WARNING, "request failed", e);
@@ -106,6 +111,10 @@ public final class InfoServer {
 		return "/msg".equals(path) || "/msg.txt".equals(path) || "/chat".equals(path);
 	}
 
+	private static boolean isSoundPath(String path) {
+		return "/sound".equals(path) || "/sound.txt".equals(path) || "/sounds".equals(path);
+	}
+
 	private void handleInfo(HttpExchange exchange) throws IOException {
 		respondSnapshot(exchange, "player info", provider::info);
 	}
@@ -114,17 +123,27 @@ public final class InfoServer {
 		respondSnapshot(exchange, "inventory", provider::inventory);
 	}
 
-	/**
-	 * Reads and drains the chat backlog. A {@code HEAD} is rejected instead of honoured: it would
-	 * consume the messages (the drain happens while building the body) and then throw the body away.
-	 */
 	private void handleMessages(HttpExchange exchange) throws IOException {
+		handleDrain(exchange, "chat messages", provider::messages);
+	}
+
+	private void handleSounds(HttpExchange exchange) throws IOException {
+		handleDrain(exchange, "sound events", provider::sounds);
+	}
+
+	/**
+	 * Reads and drains one of the since-last-time backlogs ({@code /msg}, {@code /sound}). A
+	 * {@code HEAD} is rejected instead of honoured: it would consume the backlog (the drain happens
+	 * while building the body) and then throw the body away.
+	 */
+	private void handleDrain(HttpExchange exchange, String what, Supplier<String> snapshot)
+			throws IOException {
 		if ("HEAD".equals(exchange.getRequestMethod())) {
 			exchange.getResponseHeaders().set("Allow", "GET");
-			respond(exchange, 405, "method not allowed: HEAD would consume the messages (use GET)\n");
+			respond(exchange, 405, "method not allowed: HEAD would consume the " + what + " (use GET)\n");
 			return;
 		}
-		respondSnapshot(exchange, "chat messages", provider::messages);
+		respondSnapshot(exchange, what, snapshot);
 	}
 
 	/**

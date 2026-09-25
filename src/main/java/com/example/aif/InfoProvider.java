@@ -4,8 +4,9 @@
 package com.example.aif;
 
 /**
- * Source of the text returned by {@code GET /info}, {@code GET /inventory} and {@code GET /msg}.
- * Implementations decide how the data is gathered; the HTTP layer does not care.
+ * Source of the text returned by {@code GET /info}, {@code GET /inventory}, {@code GET /msg} and
+ * {@code GET /sound}. Implementations decide how the data is gathered; the HTTP layer does not
+ * care.
  */
 public interface InfoProvider {
 	/**
@@ -27,6 +28,15 @@ public interface InfoProvider {
 	 *         new arrived
 	 */
 	String messages();
+
+	/**
+	 * Returns the sounds played since the previous call and forgets them, which is what makes
+	 * {@code GET /sound} report only what is new.
+	 *
+	 * @return the body for {@code GET /sound}, one played sound per line, or an empty string when
+	 *         nothing new was played
+	 */
+	String sounds();
 
 	/** @return true when the game is up and the data can be gathered */
 	boolean isReady();
