@@ -21,6 +21,8 @@ public final class Help {
 				                    (别名: /player, /info.txt)
 				  GET  /inventory   返回玩家背包/副手/盔甲物品数量, 打开熔炉/箱子时附带其信息
 				                    (纯文本, 每行一条; 别名: /inv, /inventory.txt)
+				  GET  /msg         返回自上次 GET /msg 以来聊天栏出现的所有信息
+				                    (纯文本, 每行一条; 别名: /chat, /msg.txt)
 
 				/info 输出格式
 				  玩家：<用户名>
@@ -60,16 +62,23 @@ public final class Help {
 				  <槽位号>：                        (槽位号从 1 开始; 空槽位直接跳过不输出)
 				  <命名空间ID> <数量>
 
+				/msg 输出格式
+				  <聊天栏原文>                     (每条消息一行, 按出现顺序, 不带任何前缀)
+				  注意：消息过多，缓冲区已丢弃 <数量> 条早期消息   (仅当缓冲区溢出时出现在第一行)
+				  没有任何新消息时返回空内容 (200, 正文为空)
+
 				示例
 				  curl http://127.0.0.1:3421
 				  curl http://127.0.0.1:3421/info
 				  curl http://127.0.0.1:3421/inventory
+				  curl http://127.0.0.1:3421/msg
 				  ./aifetch info
 				  ./aifetch inventory
+				  ./aifetch msg
 
 				返回
 				  200  纯文本 (Content-Type: text/plain; charset=utf-8)
-				  405  方法不允许 (只支持 GET/HEAD)
+				  405  方法不允许 (只支持 GET/HEAD; /msg 只支持 GET)
 				  409  游戏客户端还没启动 / 还没进入世界
 				  500  读取玩家信息失败
 
@@ -82,7 +91,12 @@ public final class Help {
 				  客户端只有在容器界面打开时才知道容器内容, 所以必须先右键打开
 				  不对盔甲栏做"是不是盔甲"的判断, 栏位里有什么就输出什么
 				  数据在客户端主线程(渲染线程)读取, 保证是完整的一帧快照
-				  命令行用法: ./aifetch info | ./aifetch inventory
+				  /msg 返回的是"上一次 GET /msg 之后"新出现的消息, 读取即清空
+				  /msg 包含聊天栏里的一切: 聊天、指令输出、Baritone 等模组输出、报错
+				  只统计聊天栏; 物品栏上方的动作栏(overlay)提示不在其中
+				  每条消息严格占一行, 消息内自带的换行会转义成 \n
+				  消息缓存在内存里, 上限 16384 条, 溢出时丢弃最早的并在下次输出提示
+				  命令行用法: ./aifetch info | ./aifetch inventory | ./aifetch msg
 				""";
 	}
 }

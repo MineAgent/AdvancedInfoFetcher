@@ -63,6 +63,13 @@ public final class PlayerInfoProvider implements InfoProvider {
 		return onClientThread(PlayerInfoProvider::inventorySnapshot);
 	}
 
+	@Override
+	public String messages() {
+		// The mixin fills the buffer on the client thread; draining it here is a plain, synchronized
+		// queue operation, so it must not wait for the render thread to tick.
+		return ChatLog.INSTANCE.drain();
+	}
+
 	/**
 	 * Runs {@code snapshot} on the client thread and waits for the result.
 	 *

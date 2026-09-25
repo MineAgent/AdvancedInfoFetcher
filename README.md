@@ -11,13 +11,17 @@ GET /info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状�
                  （别名 /player、/info.txt）
 GET /inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
                  （别名 /inv、/inventory.txt）
+GET /msg         聊天信息：自上次请求 /msg 以来聊天栏出现的一切
+                 （别名 /chat、/msg.txt）
 ```
 
 ```bash
 curl http://127.0.0.1:3421/info
 curl http://127.0.0.1:3421/inventory
+curl http://127.0.0.1:3421/msg
 ./aifetch info
 ./aifetch inventory
+./aifetch msg
 ```
 
 ## 输出格式
@@ -117,12 +121,40 @@ minecraft:diamond 3
   （`ShulkerBoxMenu`），当前不支持（与 craftcmd 一致）。
 * 数据在客户端主线程（渲染线程）读取，拿到的是完整一致的快照。
 
+`GET /msg`：
+
+```
+[Baritone] Baritone settings file not found, resetting.
+<DSH> 你好
+已将游戏模式设置为 创造模式
+未知或不完整的命令。错误见下
+definitely_not_a_command<--[此处]
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| 每行 | 聊天栏里一条消息的原文（`Component#getString()`，去掉样式，不加任何前缀） |
+| 顺序 | 按进入聊天栏的先后顺序 |
+| 范围 | **只包含上一次 `GET /msg` 之后新出现的消息**，读取即清空 |
+| 内容 | 聊天栏里的一切：玩家聊天、指令输出、`[Baritone]` 等模组输出、报错、加入/退出与死亡提示 |
+| 换行 | 消息自带的换行会被转义成字面量 `\n`，所以**每条消息严格占一行**，与客户端日志里的 `[CHAT]` 行为一致 |
+| 空结果 | 没有新消息时返回 `200` + 空正文 |
+| 溢出 | 缓存上限 16384 条；若一直没人读取导致溢出，最早的会被丢弃，下一次输出第一行是 `注意：消息过多，缓冲区已丢弃 <数量> 条早期消息` |
+
+* 想只拿增量就定时轮询 `/msg`；两次 `GET /msg` 之间不会重复，也不会丢（除非溢出）。
+* `HEAD /msg` 返回 `405`：`HEAD` 会先取走消息再丢弃正文，所以干脆拒绝。
+* 只管聊天栏；物品栏上方的动作栏（overlay）提示、`/title` 标题不在这里。
+* 抓取点挂在 `ChatComponent#addMessage` 上（Mixin）：原版三个入口
+  `addClientSystemMessage` / `addServerSystemMessage` / `addPlayerMessage` 都会汇聚到这里，
+  所以指令反馈、模组输出、报错一个不漏，并且**只记一次**。
+* 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin。
+
 ## 构建 / 安装
 
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.3.0.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.4.0.jar
 ```
 
 把 jar 放进 `.minecraft/mods/`，启动后日志里会有：
@@ -131,7 +163,8 @@ minecraft:diamond 3
 advanced-info-fetch listening on http://127.0.0.1:3421
 ```
 
-不需要 Fabric API，只要 Fabric Loader 0.19.5+。
+不需要 Fabric API，只要 Fabric Loader 0.19.5+；`/msg` 的聊天抓取用 Mixin，
+Mixin 由 Fabric Loader 自带（`advanced-info-fetch.mixins.json`）。
 
 ## 目录
 
@@ -139,9 +172,14 @@ advanced-info-fetch listening on http://127.0.0.1:3421
 src/main/java/com/example/aif/
   AdvancedInfoFetchMod.java  Fabric 客户端入口, 启动 3421 端口服务
   InfoServer.java            HTTP 服务 (只读, 只接受 GET/HEAD)
-  InfoProvider.java          数据来源抽象 (info / inventory)
+  InfoProvider.java          数据来源抽象 (info / inventory / messages)
   PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子 (Minecraft 相关代码都在这里)
+  ChatLog.java               聊天记录环形缓冲: 抓取方 push, GET /msg drain (无 Minecraft 依赖)
   Help.java                  GET / 返回的使用说明
+src/main/java/com/example/aif/mixin/
+  ChatComponentMixin.java    注入 ChatComponent#addMessage, 把每条聊天栏消息交给 ChatLog
+src/main/resources/
+  advanced-info-fetch.mixins.json  Mixin 配置
 tools/VerifyServer.java      脱离游戏验证 HTTP 层 (假数据源)
 aifetch                      命令行封装脚本
 ```

@@ -4,6 +4,7 @@
 #   ./aifetch              player info (GET /info)   [same as: ./aifetch info]
 #   ./aifetch info         player info (GET /info)
 #   ./aifetch inventory    inventory / offhand / armor (GET /inventory)
+#   ./aifetch msg          chat lines since the previous msg call (GET /msg)
 #   ./aifetch help         full manual (GET /)
 #
 # Environment:
@@ -22,8 +23,11 @@ case "${1:-info}" in
 	inventory | inv | bag)
 		curl -sS "$URL/inventory"
 		;;
+	msg | messages | chat)
+		curl -sS "$URL/msg"
+		;;
 	*)
-		echo "aifetch: unknown argument '$1' (use: info | inventory | help)" >&2
+		echo "aifetch: unknown argument '$1' (use: info | inventory | msg | help)" >&2
 		exit 2
 		;;
 esac

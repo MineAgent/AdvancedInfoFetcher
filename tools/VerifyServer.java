@@ -15,6 +15,9 @@ import com.example.aif.InfoServer;
 public final class VerifyServer {
 
 	static final class FakeProvider implements InfoProvider {
+		/** First {@code /msg} returns a transcript, every later one is empty (drain semantics). */
+		private boolean messagesDrained;
+
 		@Override
 		public boolean isReady() {
 			return true;
@@ -23,6 +26,19 @@ public final class VerifyServer {
 		@Override
 		public String unavailableReason() {
 			return "n/a";
+		}
+
+		@Override
+		public String messages() {
+			if (messagesDrained) {
+				return "";
+			}
+			messagesDrained = true;
+			return "[System] [CHAT] DSH加入了游戏\n"
+					+ "[CHAT] [Baritone] Baritone settings file not found, resetting.\n"
+					+ "[Not Secure] <DSH> hello\n"
+					+ "未知的指令, 请检查拼写\n"
+					+ "已将游戏模式设置为 创造模式\n";
 		}
 
 		@Override

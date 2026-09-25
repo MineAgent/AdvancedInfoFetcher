@@ -4,8 +4,8 @@
 package com.example.aif;
 
 /**
- * Source of the text returned by {@code GET /info} and {@code GET /inventory}. Implementations
- * decide how the data is gathered; the HTTP layer does not care.
+ * Source of the text returned by {@code GET /info}, {@code GET /inventory} and {@code GET /msg}.
+ * Implementations decide how the data is gathered; the HTTP layer does not care.
  */
 public interface InfoProvider {
 	/**
@@ -18,6 +18,15 @@ public interface InfoProvider {
 	 *         {@code null} when no world/player is loaded
 	 */
 	String inventory();
+
+	/**
+	 * Returns the chat messages collected since the previous call and forgets them, which is what
+	 * makes {@code GET /msg} report only what is new.
+	 *
+	 * @return the body for {@code GET /msg}, one message per line, or an empty string when nothing
+	 *         new arrived
+	 */
+	String messages();
 
 	/** @return true when the game is up and the data can be gathered */
 	boolean isReady();
