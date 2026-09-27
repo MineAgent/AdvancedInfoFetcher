@@ -3,31 +3,34 @@
 Minecraft **26.2**（Fabric）客户端只读信息接口：把玩家状态用纯文本吐出来，方便脚本/命令行读取。
 
 这个模组是从 [mcctl](https://github.com/MineAgent/mcctl) 里拆出来的 `/info` 功能，
-独立成一个模组，单独占用 **127.0.0.1:3421**（mcctl 仍然用 3420，两个可以同时装）。
+独立成一个模组，挂在 **MGHttpdProvider** 的共享 HTTP 服务（`127.0.0.1:3420`）的 `/aif` 前缀下，和 mcctl（`/ctl`）共用一个端口。
 
 ```
-GET /            使用说明
-GET /info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状态效果
-                 （别名 /player、/info.txt）
-GET /inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
-                 （别名 /inv、/inventory.txt）
-GET /world       世界信息：维度/时间/天数/游戏刻/天气
-                 （别名 /dimension、/world.txt）
-GET /msg         聊天信息：自上次请求 /msg 以来聊天栏出现的一切
-                 （别名 /chat、/msg.txt）
-GET /sound       声音信息：自上次请求 /sound 以来客户端播放的所有声音
-                 （别名 /sounds、/sound.txt）
-GET /keysnd      重要声音：同 /sound，但过滤掉脚步/音乐/ambient/ui/天气
-                 （与 /sound 共用队列，读取同样清空；别名 /keysounds、/keysnd.txt）
+GET /aif/            使用说明
+GET /aif/info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状态效果
+                     （别名 /aif/player、/aif/info.txt）
+GET /aif/inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
+                     （别名 /aif/inv、/aif/inventory.txt）
+GET /aif/world       世界信息：维度/时间/天数/游戏刻/天气
+                     （别名 /aif/dimension、/aif/world.txt）
+GET /aif/msg         聊天信息：自上次请求 /aif/msg 以来聊天栏出现的一切
+                     （别名 /aif/chat、/aif/msg.txt）
+GET /aif/sound       声音信息：自上次请求 /aif/sound 以来客户端播放的所有声音
+                     （别名 /aif/sounds、/aif/sound.txt）
+GET /aif/keysnd      重要声音：同 /aif/sound，但过滤掉脚步/音乐/ambient/ui/天气
+                     （与 /aif/sound 共用队列，读取同样清空；别名 /aif/keysounds、/aif/keysnd.txt）
 ```
+
+`GET http://127.0.0.1:3420/` 由 MGHttpdProvider 提供，列出当前挂载的所有 endpoint。
 
 ```bash
-curl http://127.0.0.1:3421/info
-curl http://127.0.0.1:3421/inventory
-curl http://127.0.0.1:3421/world
-curl http://127.0.0.1:3421/msg
-curl http://127.0.0.1:3421/sound
-curl http://127.0.0.1:3421/keysnd
+curl http://127.0.0.1:3420/aif/
+curl http://127.0.0.1:3420/aif/info
+curl http://127.0.0.1:3420/aif/inventory
+curl http://127.0.0.1:3420/aif/world
+curl http://127.0.0.1:3420/aif/msg
+curl http://127.0.0.1:3420/aif/sound
+curl http://127.0.0.1:3420/aif/keysnd
 ./aifetch info
 ./aifetch inventory
 ./aifetch world
@@ -40,7 +43,7 @@ curl http://127.0.0.1:3421/keysnd
 
 `200 text/plain; charset=utf-8`，每行一条。
 
-`GET /info`：
+`GET /aif/info`：
 
 ```
 玩家：DSH
@@ -72,9 +75,9 @@ minecraft:speed 1 无限
 | `效果：` | **只有存在状态效果时才出现**，按效果 ID 排序 |
 | 效果行 | `<效果ID> <等级> <剩余秒数>`，等级从 1 起；永久效果剩余秒数为 `无限` |
 
-> 维度原本在 `/info` 里，1.6.0 起移到 `/world`（和时间、天气放在一起）。
+> 维度原本在 `/aif/info` 里，1.6.0 起移到 `/aif/world`（和时间、天气放在一起）。
 
-`GET /inventory`（只有打开了容器界面时才追加对应段落，否则这两段完全不出现）：
+`GET /aif/inventory`（只有打开了容器界面时才追加对应段落，否则这两段完全不出现）：
 
 ```
 背包：
@@ -133,7 +136,7 @@ minecraft:diamond 3
   （`ShulkerBoxMenu`），当前不支持（与 craftcmd 一致）。
 * 数据在客户端主线程（渲染线程）读取，拿到的是完整一致的快照。
 
-`GET /msg`：
+`GET /aif/msg`：
 
 ```
 [Baritone] Baritone settings file not found, resetting.
@@ -160,7 +163,7 @@ definitely_not_a_command<--[此处]
   `addClientSystemMessage` / `addServerSystemMessage` / `addPlayerMessage` 都会汇聚到这里，
   所以指令反馈、模组输出、报错一个不漏，并且**只记一次**。
 
-`GET /sound`：
+`GET /aif/sound`：
 
 ```
 minecraft:block.stone.break 1.00 0.80
@@ -189,7 +192,7 @@ minecraft:block.stone.place 1.00 0.90
 * 抓取点挂在 `SoundEngine#play` 上（Mixin），这是 `SoundManager#play`、延迟播放和
   `tickInGameSound` 共同的汇聚点，所以每个真正播放的声音**只记一次**。
 
-`GET /keysnd`：
+`GET /aif/keysnd`：
 
 和 `/sound` 完全一样的行格式，但只输出**重要**声音，把这几类过滤掉：
 
@@ -207,7 +210,7 @@ minecraft:block.stone.place 1.00 0.90
   想要"全部"就只读 `/sound`，想要"重点"就只读 `/keysnd`，不要两个混着读。
 * 缓存上限、溢出提示、`HEAD` 返回 `405` 都和 `/sound` 一致。
 
-`GET /world`：
+`GET /aif/world`：
 
 ```
 维度：minecraft:overworld
@@ -219,7 +222,7 @@ minecraft:block.stone.place 1.00 0.90
 
 | 字段 | 说明 |
 | --- | --- |
-| `维度` | 维度命名空间 ID，例如 `minecraft:overworld`（1.6.0 起从 `/info` 移到这里） |
+| `维度` | 维度命名空间 ID，例如 `minecraft:overworld`（1.6.0 起从 `/aif/info` 移到这里） |
 | `时间` | 主世界时钟的时刻，`0`-`23999`；`0`=清晨、`6000`=正午、`12000`=黄昏、`18000`=午夜。**没有昼夜循环的维度（下界、末地）输出 `不可用`** |
 | `天数` | 主世界时钟经过的整天数 |
 | `游戏刻` | 世界创建以来的总 tick 数（`Level#getGameTime()`） |
@@ -232,35 +235,33 @@ minecraft:block.stone.place 1.00 0.90
 * 和 `/info`、`/inventory` 一样是**快照**（不是增量），每次请求都返回当前值。
 * 在下界/末地：`时间` 输出 `不可用`，`天气` 恒为 `clear`；`天数`/`游戏刻` 仍是主世界的计数。
 
-* 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin。
+* 整个模组仍然**不依赖 Fabric API**，只用 Fabric Loader 自带的 Mixin（但**依赖 MGHttpdProvider**，见下）。
 
 ### 退出时不再写崩溃报告
 
-关游戏时渲染线程返回后，`Main` 会启动一个 post-main 看门狗：15 秒内 JVM 还没结束，它就写一份
-`Client shutdown from post-main` 崩溃报告，然后 `System.exit(-8)`。而 JVM 只有**所有非 daemon 线程**都结束后
-才会自己退出——`com.sun.net.httpserver` 每个服务都带一个非 daemon 的 `HTTP-Dispatcher` 线程（本模组一个，
-装了 mcctl 之类的模组还会再有一个），Baritone 也留着非 daemon 的 worker pool。
-JVM 关闭钩子救不了这个场景：JVM 根本没开始关闭，钩子不会执行。
-
-`ClientExitWatcher` 在渲染线程（`Minecraft#getRunningThread()`）上 `join()`，线程结束后先停掉本模组的 HTTP 服务
-（`HttpServer#stop(0)`），再显式 `System.exit(0)`。关闭钩子照常执行（Minecraft 自己的那个也在内），
-所以看门狗永远不会触发；这时世界早已保存、窗口早已关闭（`exitWorldAndClose()` 在 `main()` 返回前就跑完了），
-强制退出不会丢存档。既不依赖 Fabric API，也不用自己实现 HTTP 循环。
-
-> 只装本模组、不装 mcctl 时同样有效（验证时就是只留 aif 一个），所以两个模组各自独立解决这个问题。
+已挪到 MGHttpdProvider：共享 HTTP 服务的 `HTTP-Dispatcher` 是非 daemon 线程，关游戏时若不显式结束 JVM，
+Minecraft 的 post-main 看门狗会在 15 秒后写一份 `Client shutdown from post-main` 崩溃报告。
+provider 的 `ClientExitWatcher` 守候渲染线程，线程结束后停服务并 `System.exit(0)`。
+细节见 [MGHttpdProvider 的 README](https://github.com/MineAgent/HttpdProvider)——本模组不再自己起服务，
+也就不再持有这段逻辑。
 
 ## 构建 / 安装
 
 需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
+编译依赖 MGHttpdProvider 的 API jar（`libs/httpdprovider-1.0.jar`，已在仓库里）；重新生成它：在
+[HttpdProvider 仓库](https://github.com/MineAgent/HttpdProvider) 跑 `./gradlew build`，把
+`build/libs/httpdprovider-1.0.jar` 复制到本仓库的 `libs/`。它是 `compileOnly`，不会被打进本模组的 jar。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.2.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.3.jar
 ```
 
-把 jar 放进 `.minecraft/mods/`，启动后日志里会有：
+把 jar **和 MGHttpdProvider 的 jar（`httpdprovider-1.0.jar`，必需）**一起放进 `.minecraft/mods/`，
+启动后日志里会有：
 
 ```
-advanced-info-fetch listening on http://127.0.0.1:3421
+MGHttpdProvider listening on http://127.0.0.1:3420
+registered /aif (AdvancedInfoFetcher — 只读状态 ...)
 ```
 
 不需要 Fabric API，只要 Fabric Loader 0.19.5+；`/msg` 和 `/sound` 的抓取用 Mixin，
@@ -270,15 +271,14 @@ Mixin 由 Fabric Loader 自带（`advanced-info-fetch.mixins.json`）。
 
 ```
 src/main/java/com/example/aif/
-  AdvancedInfoFetchMod.java  Fabric 客户端入口, 启动 3421 端口服务
-  ClientExitWatcher.java     守候渲染线程, 客户端退出后停掉服务并结束 JVM (消除 post-main 崩溃报告)
-  InfoServer.java            HTTP 服务 (只读, 只接受 GET/HEAD)
+  AdvancedInfoFetchMod.java  Fabric 客户端入口, 把 /aif 注册到 MGHttpdProvider
+  InfoEndpoint.java          /aif 前缀下的只读 endpoint (只接受 GET/HEAD)
   InfoProvider.java          数据来源抽象 (info / inventory / messages / sounds / keySounds / world)
   PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子/世界状态 (Minecraft 相关代码都在这里)
   LineBuffer.java            有界线程安全行缓冲: push / 整体 drain / 过滤 drain, 溢出提示 (无 Minecraft 依赖)
   ChatLog.java               聊天记录缓冲: 抓取方 push, GET /msg drain
   SoundLog.java              声音记录缓冲: 每行 "声音ID 音量 音高", GET /sound 全给, GET /keysnd 过滤
-  Help.java                  GET / 返回的使用说明
+  Help.java                  GET /aif/ 返回的使用说明
 src/main/java/com/example/aif/mixin/
   ChatComponentMixin.java    注入 ChatComponent#addMessage, 把每条聊天栏消息交给 ChatLog
   SoundEngineMixin.java      注入 SoundEngine#play, 把每个真正播放的声音交给 SoundLog
@@ -286,20 +286,22 @@ src/main/resources/
   advanced-info-fetch.mixins.json  Mixin 配置
 tools/VerifyServer.java      脱离游戏验证 HTTP 层 (假数据源)
 aifetch                      命令行封装脚本
+libs/httpdprovider-1.0.jar   MGHttpdProvider 的 API (编译用, compileOnly)
 ```
 
 脱离游戏验证 HTTP 层：
 
 ```bash
-javac --release 25 -encoding UTF-8 -d /tmp/aif-verify \
-  src/main/java/com/example/aif/{InfoProvider,InfoServer,Help,LineBuffer}.java tools/VerifyServer.java
-java -cp /tmp/aif-verify VerifyServer
-curl http://127.0.0.1:3421/info
-curl http://127.0.0.1:3421/inventory
-curl http://127.0.0.1:3421/world
-curl http://127.0.0.1:3421/msg
-curl http://127.0.0.1:3421/sound
-curl http://127.0.0.1:3421/keysnd
+javac --release 25 -encoding UTF-8 -d /tmp/aif-verify -cp libs/httpdprovider-1.0.jar \
+  src/main/java/com/example/aif/{InfoProvider,InfoEndpoint,Help,LineBuffer}.java tools/VerifyServer.java
+java -cp /tmp/aif-verify:libs/httpdprovider-1.0.jar VerifyServer
+curl http://127.0.0.1:3420/
+curl http://127.0.0.1:3420/aif/info
+curl http://127.0.0.1:3420/aif/inventory
+curl http://127.0.0.1:3420/aif/world
+curl http://127.0.0.1:3420/aif/msg
+curl http://127.0.0.1:3420/aif/sound
+curl http://127.0.0.1:3420/aif/keysnd
 ```
 
 ## 许可证

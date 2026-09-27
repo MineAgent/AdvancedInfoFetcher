@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # aifetch - query the running Minecraft client for player info.
 #
-#   ./aifetch              player info (GET /info)   [same as: ./aifetch info]
-#   ./aifetch info         player info (GET /info)
-#   ./aifetch inventory    inventory / offhand / armor (GET /inventory)
-#   ./aifetch msg          chat lines since the previous msg call (GET /msg)
-#   ./aifetch sound        sounds played since the previous sound call (GET /sound)
-#   ./aifetch keysnd       only the noteworthy sounds since the previous call (GET /keysnd)
-#   ./aifetch world        dimension / time / weather (GET /world)
-#   ./aifetch help         full manual (GET /)
+#   ./aifetch              player info (GET /aif/info)   [same as: ./aifetch info]
+#   ./aifetch info         player info (GET /aif/info)
+#   ./aifetch inventory    inventory / offhand / armor (GET /aif/inventory)
+#   ./aifetch msg          chat lines since the previous msg call (GET /aif/msg)
+#   ./aifetch sound        sounds played since the previous sound call (GET /aif/sound)
+#   ./aifetch keysnd       only the noteworthy sounds since the previous call (GET /aif/keysnd)
+#   ./aifetch world        dimension / time / weather (GET /aif/world)
+#   ./aifetch help         full manual (GET /aif/)
 #
 # Environment:
-#   AIFETCH_URL   default http://127.0.0.1:3421
+#   AIFETCH_URL   default http://127.0.0.1:3420/aif
 set -euo pipefail
 
-URL="${AIFETCH_URL:-http://127.0.0.1:3421}"
+URL="${AIFETCH_URL:-http://127.0.0.1:3420/aif}"
 
 case "${1:-info}" in
 	-h | --help | help)
-		exec curl -sS "$URL"
+		exec curl -sS "$URL/"
 		;;
 	info | player | "")
 		curl -sS "$URL/info"

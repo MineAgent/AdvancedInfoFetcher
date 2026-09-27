@@ -3,71 +3,58 @@
 
 package com.example.aif;
 
+import com.example.httpd.HttpdProvider;
+import com.example.httpd.PathHandler;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Tiny read-only HTTP server bound to {@code 127.0.0.1:3421}.
+ * The read-only info endpoints, mounted under the shared server's {@code /aif} prefix.
  *
  * <ul>
- *   <li>{@code GET /} returns the manual.</li>
- *   <li>{@code GET /info} returns position/facing/vitals/effects as plain text.</li>
- *   <li>{@code GET /inventory} returns the carried items as plain text.</li>
- *   <li>{@code GET /msg} returns the chat lines that arrived since the previous call.</li>
- *   <li>{@code GET /sound} returns the sounds played since the previous call.</li>
- *   <li>{@code GET /keysnd} returns only the noteworthy sounds since the previous call.</li>
- *   <li>{@code GET /world} returns dimension, time and weather.</li>
+ *   <li>{@code GET /aif/} returns the manual.</li>
+ *   <li>{@code GET /aif/info} returns position/facing/vitals/effects as plain text.</li>
+ *   <li>{@code GET /aif/inventory} returns the carried items as plain text.</li>
+ *   <li>{@code GET /aif/msg} returns the chat lines that arrived since the previous call.</li>
+ *   <li>{@code GET /aif/sound} returns the sounds played since the previous call.</li>
+ *   <li>{@code GET /aif/keysnd} returns only the noteworthy sounds since the previous call.</li>
+ *   <li>{@code GET /aif/world} returns dimension, time and weather.</li>
  * </ul>
+ *
+ * <p>The HTTP server itself (127.0.0.1:3420) belongs to MGHttpdProvider; this class only serves
+ * the paths it is handed below the prefix, so {@code /info} here means {@code /aif/info}.</p>
  */
-public final class InfoServer {
-	public static final String HOST = "127.0.0.1";
-	public static final int PORT = 3421;
+public final class InfoEndpoint implements PathHandler {
+	public static final String PREFIX = "/aif";
+	public static final String NAME = "AdvancedInfoFetcher — 只读状态 (坐标/背包/聊天/声音/世界)";
+
+	/** What the provider's {@code GET /} index lists for this mod. */
+	public static final List<HttpdProvider.Endpoint> ENDPOINTS = List.of(
+			new HttpdProvider.Endpoint("GET", "/aif/", "使用说明"),
+			new HttpdProvider.Endpoint("GET", "/aif/info", "玩家状态 (别名 /aif/player)"),
+			new HttpdProvider.Endpoint("GET", "/aif/inventory", "背包与容器 (别名 /aif/inv)"),
+			new HttpdProvider.Endpoint("GET", "/aif/world", "维度/时间/天气 (别名 /aif/dimension)"),
+			new HttpdProvider.Endpoint("GET", "/aif/msg", "上次读取后的聊天 (别名 /aif/chat)"),
+			new HttpdProvider.Endpoint("GET", "/aif/sound", "上次读取后的声音 (别名 /aif/sounds)"),
+			new HttpdProvider.Endpoint("GET", "/aif/keysnd", "上次读取后的重要声音 (别名 /aif/keysounds)"));
 
 	private static final Logger LOG = Logger.getLogger("aif");
 
 	private final InfoProvider provider;
-	private HttpServer server;
-	private ExecutorService pool;
 
-	public InfoServer(InfoProvider provider) {
+	public InfoEndpoint(InfoProvider provider) {
 		this.provider = provider;
 	}
 
-	public void start() throws IOException {
-		server = HttpServer.create(new InetSocketAddress(HOST, PORT), 16);
-		server.createContext("/", this::handle);
-		pool = Executors.newFixedThreadPool(2, runnable -> {
-			Thread thread = new Thread(runnable, "aif-http");
-			thread.setDaemon(true);
-			return thread;
-		});
-		server.setExecutor(pool);
-		server.start();
-		LOG.info("advanced-info-fetch listening on http://" + HOST + ":" + PORT);
-	}
-
-	public void stop() {
-		if (server != null) {
-			server.stop(0);
-			server = null;
-		}
-		if (pool != null) {
-			pool.shutdownNow();
-			pool = null;
-		}
-	}
-
-	private void handle(HttpExchange exchange) throws IOException {
+	@Override
+	public void handle(HttpExchange exchange, String path) throws IOException {
 		try {
 			String method = exchange.getRequestMethod();
 			if (!"GET".equals(method) && !"HEAD".equals(method)) {
@@ -76,27 +63,27 @@ public final class InfoServer {
 				return;
 			}
 
-			if (isInfoPath(exchange.getRequestURI().getPath())) {
+			if (isInfoPath(path)) {
 				handleInfo(exchange);
 				return;
 			}
-			if (isInventoryPath(exchange.getRequestURI().getPath())) {
+			if (isInventoryPath(path)) {
 				handleInventory(exchange);
 				return;
 			}
-			if (isMessagePath(exchange.getRequestURI().getPath())) {
+			if (isMessagePath(path)) {
 				handleMessages(exchange);
 				return;
 			}
-			if (isSoundPath(exchange.getRequestURI().getPath())) {
+			if (isSoundPath(path)) {
 				handleSounds(exchange);
 				return;
 			}
-			if (isKeySoundPath(exchange.getRequestURI().getPath())) {
+			if (isKeySoundPath(path)) {
 				handleKeySounds(exchange);
 				return;
 			}
-			if (isWorldPath(exchange.getRequestURI().getPath())) {
+			if (isWorldPath(path)) {
 				handleWorld(exchange);
 				return;
 			}
@@ -104,9 +91,8 @@ public final class InfoServer {
 		} catch (Exception e) {
 			LOG.log(Level.WARNING, "request failed", e);
 			respond(exchange, 500, "internal error: " + e + "\n");
-		} finally {
-			exchange.close();
 		}
+		// the provider closes the exchange
 	}
 
 	private static boolean isInfoPath(String path) {

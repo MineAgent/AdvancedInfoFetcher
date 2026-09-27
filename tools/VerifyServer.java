@@ -1,15 +1,17 @@
+import com.example.aif.InfoEndpoint;
 import com.example.aif.InfoProvider;
-import com.example.aif.InfoServer;
+import com.example.httpd.HttpdProvider;
 
 /**
- * Standalone harness: starts the real HTTP server with a fake info provider, so the transport
- * layer can be curled without launching Minecraft.
+ * Standalone harness: mounts the info endpoints at {@code /aif} on the real HTTP server with a fake
+ * info provider, so the transport layer can be curled without launching Minecraft.
  *
- * <p>Compile only the Minecraft-free classes together with this file:</p>
+ * <p>Compile only the Minecraft-free classes together with this file (and MGHttpdProvider's API
+ * jar):</p>
  * <pre>
- * javac --release 25 -encoding UTF-8 -d /tmp/aif-verify \
- *   src/main/java/com/example/aif/{InfoProvider,InfoServer,Help}.java tools/VerifyServer.java
- * java -cp /tmp/aif-verify VerifyServer
+ * javac --release 25 -encoding UTF-8 -d /tmp/aif-verify -cp libs/httpdprovider-1.0.jar \
+ *   src/main/java/com/example/aif/{InfoProvider,InfoEndpoint,Help}.java tools/VerifyServer.java
+ * java -cp /tmp/aif-verify:libs/httpdprovider-1.0.jar VerifyServer
  * </pre>
  */
 public final class VerifyServer {
@@ -121,9 +123,9 @@ public final class VerifyServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		InfoServer server = new InfoServer(new FakeProvider());
-		server.start();
-		System.out.println("READY - http://" + InfoServer.HOST + ":" + InfoServer.PORT);
+		HttpdProvider.register(InfoEndpoint.PREFIX, InfoEndpoint.NAME, InfoEndpoint.ENDPOINTS,
+				new InfoEndpoint(new FakeProvider()));
+		System.out.println("READY - http://127.0.0.1:3420/aif");
 		Thread.sleep(Long.MAX_VALUE);
 	}
 }
