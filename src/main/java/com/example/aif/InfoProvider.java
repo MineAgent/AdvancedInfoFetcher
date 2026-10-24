@@ -10,7 +10,8 @@ package com.example.aif;
  */
 public interface InfoProvider {
 	/**
-	 * @return the body for {@code GET /info}, or {@code null} when no world/player is loaded
+	 * @return the body for {@code GET /info} (player state plus the targeted block), or
+	 *         {@code null} when no world/player is loaded
 	 */
 	String info();
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # aifetch - query the running Minecraft client for player info.
 #
-#   ./aifetch              player info (GET /aif/info)   [same as: ./aifetch info]
-#   ./aifetch info         player info (GET /aif/info)
+#   ./aifetch              player info + targeted block (GET /aif/info)   [same as: ./aifetch info]
+#   ./aifetch info         player info + targeted block (GET /aif/info)
 #   ./aifetch inventory    inventory / offhand / armor (GET /aif/inventory)
 #   ./aifetch msg          chat lines since the previous msg call (GET /aif/msg)
 #   ./aifetch sound        sounds played since the previous sound call (GET /aif/sound)

@@ -3,7 +3,7 @@
 	"id": "advanced-info-fetch",
 	"version": "${version}",
 	"name": "MC Advanced Info Fetch",
-	"description": "Read-only endpoints mounted at 127.0.0.1:3420/aif by MGHttpdProvider that report the player position, facing, vitals and status effects (/aif/info), the carried inventory, offhand, armor and any open furnace or chest (/aif/inventory), the current dimension/time/weather (/aif/world), every chat line since the previous request (/aif/msg), and every sound played since the previous request (/aif/sound, plus the filtered /aif/keysnd) as plain technical text. Split out of mcctl.",
+	"description": "Read-only endpoints mounted at 127.0.0.1:3420/aif by MGHttpdProvider that report the player position, facing, vitals, status effects and the block under the crosshair with its namespace ID and block/sky light (/aif/info), the carried inventory, offhand, armor and any open furnace or chest (/aif/inventory), the current dimension/time/weather (/aif/world), every chat line since the previous request (/aif/msg), and every sound played since the previous request (/aif/sound, plus the filtered /aif/keysnd) as plain technical text. Split out of mcctl.",
 	"authors": [
 		"MineAgent"
 	],

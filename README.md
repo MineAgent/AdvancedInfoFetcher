@@ -7,7 +7,7 @@ Minecraft **26.2**（Fabric）客户端只读信息接口：把玩家状态用�
 
 ```
 GET /aif/            使用说明
-GET /aif/info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状态效果
+GET /aif/info        玩家信息：坐标/方位/生命值/饱食度/饱和度/状态效果/目标方块/光照
                      （别名 /aif/player、/aif/info.txt）
 GET /aif/inventory   背包物品：主背包/副手/盔甲，以及打开中的熔炉/箱子
                      （别名 /aif/inv、/aif/inventory.txt）
@@ -49,6 +49,8 @@ curl http://127.0.0.1:3420/aif/keysnd
 玩家：DSH
 坐标：-222.94 106.0 103.1
 方块：-223 106 103
+目标方块：minecraft:grass_block
+光照：天空光 15（此方块不发光）
 方位：west
 yaw：-266.7
 pitch：30.1
@@ -66,6 +68,8 @@ minecraft:speed 1 无限
 | `玩家` | 用户名 |
 | `坐标` | 精确坐标，保留 2 位小数 |
 | `方块` | 所在方块坐标（整数） |
+| `目标方块` | 准星指向方块的命名空间 ID；指向天空/实体/空气时为 `未选中` |
+| `光照` | 目标方块位置的原始光照，范围 0-15；方块光为 0 时输出 `光照：天空光 <n>（此方块不发光）`，方块光大于 0 时输出 `光照：<最大值> (方块光 <n> / 天空光 <n>)`；`未选中` 时没有这一行 |
 | `方位` | `north` / `south` / `east` / `west` |
 | `yaw` `pitch` | 朝向角度，保留 1 位小数 |
 | `选中` | 快捷栏选中格，1-9 |
@@ -76,6 +80,26 @@ minecraft:speed 1 无限
 | 效果行 | `<效果ID> <等级> <剩余秒数>`，等级从 1 起；永久效果剩余秒数为 `无限` |
 
 > 维度原本在 `/aif/info` 里，1.6.0 起移到 `/aif/world`（和时间、天气放在一起）。
+
+`目标方块` 有两类光照输出：
+
+```text
+目标方块：minecraft:stone
+光照：天空光 15（此方块不发光）
+
+目标方块：minecraft:torch
+光照：14 (方块光 14 / 天空光 0)
+```
+
+没有方块目标时只输出 `目标方块：未选中`，不再输出 `光照`：
+
+```text
+目标方块：未选中
+```
+
+* 光照取目标方块自身位置，读的是原始方块光/天空光，不做昼夜天空光衰减，也不是命中面相邻位置的光照。
+* 准星命中实体、天空或空气时都算 `未选中`；目标方块被破坏后命中结果尚未刷新也按 `未选中` 处理。
+* `/aif/info` 与 `/aif/player` 返回同一份内容；这是附加字段，旧字段顺序不变。
 
 `GET /aif/inventory`（只有打开了容器界面时才追加对应段落，否则这两段完全不出现）：
 
@@ -253,7 +277,7 @@ provider 的 `ClientExitWatcher` 守候渲染线程，线程结束后停服务�
 `build/libs/httpdprovider-1.0.jar` 复制到本仓库的 `libs/`。它是 `compileOnly`，不会被打进本模组的 jar。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.6.3.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.7.0.jar
 ```
 
 把 jar **和 MGHttpdProvider 的 jar（`httpdprovider-1.0.jar`，必需）**一起放进 `.minecraft/mods/`，
@@ -274,7 +298,7 @@ src/main/java/com/example/aif/
   AdvancedInfoFetchMod.java  Fabric 客户端入口, 把 /aif 注册到 MGHttpdProvider
   InfoEndpoint.java          /aif 前缀下的只读 endpoint (只接受 GET/HEAD)
   InfoProvider.java          数据来源抽象 (info / inventory / messages / sounds / keySounds / world)
-  PlayerInfoProvider.java    读取玩家坐标/方位/生命值/效果/背包/熔炉/箱子/世界状态 (Minecraft 相关代码都在这里)
+  PlayerInfoProvider.java    读取玩家坐标/方位/目标方块/光照/生命值/效果/背包/熔炉/箱子/世界状态 (Minecraft 相关代码都在这里)
   LineBuffer.java            有界线程安全行缓冲: push / 整体 drain / 过滤 drain, 溢出提示 (无 Minecraft 依赖)
   ChatLog.java               聊天记录缓冲: 抓取方 push, GET /msg drain
   SoundLog.java              声音记录缓冲: 每行 "声音ID 音量 音高", GET /sound 全给, GET /keysnd 过滤

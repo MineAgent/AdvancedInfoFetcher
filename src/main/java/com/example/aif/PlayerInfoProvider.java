@@ -15,6 +15,9 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AbstractFurnaceMenu;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.List;
 import java.util.Locale;
@@ -29,9 +32,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Reads the local player's state. {@link #info()} reports position, facing, vitals and active
- * effects; {@link #inventory()} reports the carried items plus the screen of an open furnace or
- * chest.
+ * Reads the local player's state. {@link #info()} reports position, facing, vitals, active effects
+ * and the block under the crosshair; {@link #inventory()} reports the carried items plus the screen
+ * of an open furnace or chest.
  *
  * <p>Everything is read on the client (render) thread so the snapshot is consistent, then handed
  * back to the requesting HTTP thread.</p>
@@ -144,6 +147,7 @@ public final class PlayerInfoProvider implements InfoProvider {
 				.append(decimal(player.getZ(), 2)).append('\n');
 		out.append("方块：").append(block.getX()).append(' ')
 				.append(block.getY()).append(' ').append(block.getZ()).append('\n');
+		appendTargetInfo(out, player);
 		out.append("方位：").append(player.getDirection().getName()).append('\n');
 		out.append("yaw：").append(decimal(player.getYRot(), 1)).append('\n');
 		out.append("pitch：").append(decimal(player.getXRot(), 1)).append('\n');
@@ -158,6 +162,40 @@ public final class PlayerInfoProvider implements InfoProvider {
 		}
 
 		return out.toString();
+	}
+
+	/**
+	 * Runs on the client thread: the block under the crosshair and its raw light levels.
+	 *
+	 * <p>When the block light is zero the light line names the sky light instead of printing a
+	 * combined value, because "方块光 0" alone reads as if the block were unlit.</p>
+	 */
+	private static void appendTargetInfo(StringBuilder out, LocalPlayer player) {
+		Minecraft minecraft = mc();
+		if (minecraft == null || !(minecraft.hitResult instanceof BlockHitResult hit)) {
+			out.append("目标方块：未选中\n");
+			return;
+		}
+
+		var level = player.level();
+		BlockPos pos = hit.getBlockPos();
+		BlockState state = level.getBlockState(pos);
+		if (state.isAir()) {
+			out.append("目标方块：未选中\n");
+			return;
+		}
+
+		Identifier id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+		int blockLight = level.getBrightness(LightLayer.BLOCK, pos);
+		int skyLight = level.getBrightness(LightLayer.SKY, pos);
+		out.append("目标方块：").append(id == null ? "unknown" : id).append('\n');
+		if (blockLight == 0) {
+			out.append("光照：天空光 ").append(skyLight).append("（此方块不发光）\n");
+		} else {
+			out.append("光照：").append(Math.max(blockLight, skyLight))
+					.append(" (方块光 ").append(blockLight)
+					.append(" / 天空光 ").append(skyLight).append(")\n");
+		}
 	}
 
 	/** Runs on the client thread: dimension, time, day and weather. */

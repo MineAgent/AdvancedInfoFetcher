@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  *
  * <ul>
  *   <li>{@code GET /aif/} returns the manual.</li>
- *   <li>{@code GET /aif/info} returns position/facing/vitals/effects as plain text.</li>
+ *   <li>{@code GET /aif/info} returns position/facing/vitals/effects and the targeted block.</li>
  *   <li>{@code GET /aif/inventory} returns the carried items as plain text.</li>
  *   <li>{@code GET /aif/msg} returns the chat lines that arrived since the previous call.</li>
  *   <li>{@code GET /aif/sound} returns the sounds played since the previous call.</li>
@@ -33,12 +33,12 @@ import java.util.logging.Logger;
  */
 public final class InfoEndpoint implements PathHandler {
 	public static final String PREFIX = "/aif";
-	public static final String NAME = "AdvancedInfoFetcher — 只读状态 (坐标/背包/聊天/声音/世界)";
+	public static final String NAME = "AdvancedInfoFetcher — 只读状态 (坐标/目标方块/背包/聊天/声音/世界)";
 
 	/** What the provider's {@code GET /} index lists for this mod. */
 	public static final List<HttpdProvider.Endpoint> ENDPOINTS = List.of(
 			new HttpdProvider.Endpoint("GET", "/aif/", "使用说明"),
-			new HttpdProvider.Endpoint("GET", "/aif/info", "玩家状态 (别名 /aif/player)"),
+			new HttpdProvider.Endpoint("GET", "/aif/info", "玩家状态与目标方块/光照 (别名 /aif/player)"),
 			new HttpdProvider.Endpoint("GET", "/aif/inventory", "背包与容器 (别名 /aif/inv)"),
 			new HttpdProvider.Endpoint("GET", "/aif/world", "维度/时间/天气 (别名 /aif/dimension)"),
 			new HttpdProvider.Endpoint("GET", "/aif/msg", "上次读取后的聊天 (别名 /aif/chat)"),

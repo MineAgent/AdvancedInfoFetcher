@@ -81,6 +81,8 @@ public final class VerifyServer {
 			return "玩家：FakePlayer\n"
 					+ "坐标：-219.53 105.0 112.31\n"
 					+ "方块：-220 105 112\n"
+					+ "目标方块：minecraft:short_grass\n"
+					+ "光照：天空光 15（此方块不发光）\n"
 					+ "方位：north\n"
 					+ "yaw：-135.2\n"
 					+ "pitch：12.4\n"
