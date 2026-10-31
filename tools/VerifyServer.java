@@ -39,9 +39,9 @@ public final class VerifyServer {
 				return "";
 			}
 			messagesDrained = true;
-			return "[System] [CHAT] DSH加入了游戏\n"
+			return "[System] [CHAT] Steve加入了游戏\n"
 					+ "[CHAT] [Baritone] Baritone settings file not found, resetting.\n"
-					+ "[Not Secure] <DSH> hello\n"
+					+ "[Not Secure] <Steve> hello\n"
 					+ "未知的指令, 请检查拼写\n"
 					+ "已将游戏模式设置为 创造模式\n";
 		}

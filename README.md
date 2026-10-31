@@ -46,7 +46,7 @@ curl http://127.0.0.1:3420/aif/keysnd
 `GET /aif/info`：
 
 ```
-玩家：DSH
+玩家：Steve
 坐标：-222.94 106.0 103.1
 方块：-223 106 103
 目标方块：minecraft:grass_block
@@ -164,7 +164,7 @@ minecraft:diamond 3
 
 ```
 [Baritone] Baritone settings file not found, resetting.
-<DSH> 你好
+<Steve> 你好
 已将游戏模式设置为 创造模式
 未知或不完整的命令。错误见下
 definitely_not_a_command<--[此处]
