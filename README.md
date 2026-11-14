@@ -1,6 +1,6 @@
 # MC Advanced Info Fetch (AdvancedInfoFetcher)
 
-Minecraft **26.2**（Fabric）客户端只读信息接口：把玩家状态用纯文本吐出来，方便脚本/命令行读取。
+Minecraft **26.2 / 26.3**（Fabric）客户端只读信息接口：把玩家状态用纯文本吐出来，方便脚本/命令行读取。
 
 这个模组是从 [mcctl](https://github.com/MineAgent/mcctl) 里拆出来的 `/info` 功能，
 独立成一个模组，挂在 **MGHttpdProvider** 的共享 HTTP 服务（`127.0.0.1:3420`）的 `/aif` 前缀下，和 mcctl（`/ctl`）共用一个端口。
@@ -271,13 +271,13 @@ provider 的 `ClientExitWatcher` 守候渲染线程，线程结束后停服务�
 
 ## 构建 / 安装
 
-需要 JDK 25（Minecraft 26.2 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
+需要 JDK 25（Minecraft 26.2 / 26.3 要求）。26.1 起官方代码不再混淆，所以 Loom 不需要 mappings 配置。
 编译依赖 MGHttpdProvider 的 API jar（`libs/httpdprovider-1.0.jar`，已在仓库里）；重新生成它：在
 [HttpdProvider 仓库](https://github.com/MineAgent/HttpdProvider) 跑 `./gradlew build`，把
 `build/libs/httpdprovider-1.0.jar` 复制到本仓库的 `libs/`。它是 `compileOnly`，不会被打进本模组的 jar。
 
 ```bash
-./gradlew build      # 产物: build/libs/advanced-info-fetch-1.7.0.jar
+./gradlew build      # 产物: build/libs/advanced-info-fetch-1.7.1.jar
 ```
 
 把 jar **和 MGHttpdProvider 的 jar（`httpdprovider-1.0.jar`，必需）**一起放进 `.minecraft/mods/`，
@@ -288,7 +288,7 @@ MGHttpdProvider listening on http://127.0.0.1:3420
 registered /aif (AdvancedInfoFetcher — 只读状态 ...)
 ```
 
-不需要 Fabric API，只要 Fabric Loader 0.19.5+；`/msg` 和 `/sound` 的抓取用 Mixin，
+不需要 Fabric API，只要 Fabric Loader 0.19.5+（26.3 实例用 0.20.1）；`/msg` 和 `/sound` 的抓取用 Mixin，
 Mixin 由 Fabric Loader 自带（`advanced-info-fetch.mixins.json`）。
 
 ## 目录
@@ -327,6 +327,9 @@ curl http://127.0.0.1:3420/aif/msg
 curl http://127.0.0.1:3420/aif/sound
 curl http://127.0.0.1:3420/aif/keysnd
 ```
+
+26.2 / 26.3 都用同一份 `advanced-info-fetch-1.7.1.jar` 实测过：26.3 上 `/aif/info`、`/aif/world`、
+`/aif/inventory`、`/aif/msg` 返回正常，mixin（ChatComponent / SoundEngine）无注入错误。
 
 ## 许可证
 
